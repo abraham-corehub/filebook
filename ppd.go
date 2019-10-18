@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"time"
@@ -8,15 +9,28 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qor/admin"
-	"github.com/qor/auth"
-	"github.com/qor/auth/auth_identity"
-	"github.com/qor/auth/providers/password"
 )
 
 // User Create a GORM-backend model
 type User struct {
 	gorm.Model
-	Name string
+	Email     string
+	Password  string
+	Name      sql.NullString
+	Gender    string
+	Role      string
+	Addresses []Address
+}
+
+// Address Create a GORM-backend model
+type Address struct {
+	gorm.Model
+	UserID      uint
+	ContactName string `form:"contact-name"`
+	Phone       string `form:"phone"`
+	City        string `form:"city"`
+	Address1    string `form:"address1"`
+	Address2    string `form:"address2"`
 }
 
 // Department Create another GORM-backend model
@@ -34,21 +48,19 @@ type Inward struct {
 }
 
 func main() {
-	dB, _ := gorm.Open("sqlite3", "dbpbqor.db")
-	dB.AutoMigrate(&User{}, &Department{}, &Inward{})
-	dB.AutoMigrate(&auth_identity.AuthIdentity{})
+	dB, _ := gorm.Open("sqlite3", "dbp.db")
+	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{})
 
-	Admin := admin.New(&admin.AdminConfig{DB: dB})
-	Auth := auth.New(&auth.Config{DB: dB})
+	ppdA := admin.New(&admin.AdminConfig{DB: dB})
 
-	Auth.RegisterProvider(password.New(&password.Config{}))
-	Admin.AddResource(&User{})
-	Admin.AddResource(&Department{})
-	Admin.AddResource(&Inward{})
+	ppdA.AddResource(&Department{})
+	ppdA.AddResource(&Inward{})
+	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
 
+	user.IndexAttrs("-Password")
 	mux := http.NewServeMux()
 
-	Admin.MountTo("/admin", mux)
+	ppdA.MountTo("/admin", mux)
 
 	fmt.Println("Listening on: http://localhost:8080")
 	http.ListenAndServe(":8080", mux)
