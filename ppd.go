@@ -12,7 +12,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qor/admin"
 	"github.com/qor/media"
-	"github.com/qor/media/filesystem"
+	"github.com/qor/media/oss"
 	"github.com/qor/qor"
 	"github.com/qor/qor/resource"
 	"github.com/qor/qor/utils"
@@ -49,14 +49,19 @@ type Department struct {
 // Inward Create another GORM-backend model
 type Inward struct {
 	gorm.Model
-	Title    string
-	From     string
-	As       string
-	Date     time.Time
-	Category string
-	Remarks  string
-	Document filesystem.FileSystem
-	Status   string
+	Title     string
+	From      string
+	As        string
+	Date      time.Time
+	Category  string
+	Remarks   string
+	Documents Document
+	Status    string
+}
+
+// Document is a custom type
+type Document struct {
+	oss.OSS
 }
 
 func main() {
@@ -88,7 +93,7 @@ func main() {
 	})
 	user.IndexAttrs("-Password")
 	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
-
+	inward.Meta(&admin.Meta{Name: "Category", Config: &admin.SelectOneConfig{Collection: []string{"Tender", "Notice", "Record"}}})
 	inward.NewAttrs(
 		"Title",
 		&admin.Section{
@@ -100,7 +105,7 @@ func main() {
 		},
 		"Category",
 		"Remarks",
-		"Document",
+		"Documents",
 	)
 
 	inward.EditAttrs(
@@ -114,7 +119,7 @@ func main() {
 		},
 		"Category",
 		"Remarks",
-		"Document",
+		"Documents",
 	)
 
 	inward.Meta(&admin.Meta{Name: "As", Config: &admin.SelectOneConfig{Collection: []string{"Physical Document", "Telephone Enquiry"}}})
