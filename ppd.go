@@ -56,7 +56,7 @@ func main() {
 	ppdA.AddResource(&Department{})
 	ppdA.AddResource(&Inward{})
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
-	user.Meta(ppdA.Meta{Name: "Password", FieldName: "Password", Type: "password"})
+	user.Meta(&admin.Meta{Name: "Password", FieldName: "Password", Type: "password"})
 	user.IndexAttrs("-Password")
 	mux := http.NewServeMux()
 
