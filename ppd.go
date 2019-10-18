@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha1"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,6 +11,9 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qor/admin"
+	"github.com/qor/qor"
+	"github.com/qor/qor/resource"
+	"github.com/qor/qor/utils"
 )
 
 // User Create a GORM-backend model
@@ -56,7 +61,18 @@ func main() {
 	ppdA.AddResource(&Department{})
 	ppdA.AddResource(&Inward{})
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
-	user.Meta(&admin.Meta{Name: "Password", FieldName: "Password", Type: "password"})
+	user.Meta(&admin.Meta{
+		Name:      "Password",
+		FieldName: "Password",
+		Type:      "password",
+		Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
+		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+			if newPassword := utils.ToString(metaValue.Value); newPassword != "" {
+				shaPW := strToSHA256(newPassword)
+				record.(*User).Password = string(shaPW)
+			}
+		},
+	})
 	user.IndexAttrs("-Password")
 	mux := http.NewServeMux()
 
@@ -64,4 +80,12 @@ func main() {
 
 	fmt.Println("Listening on: http://localhost:8080")
 	http.ListenAndServe(":8080", mux)
+}
+
+func strToSHA256(str string) []byte {
+	pW := str
+	pWH := sha1.New()
+	pWH.Write([]byte(pW))
+	pWHS := hex.EncodeToString(pWH.Sum(nil))
+	return []byte(pWHS)
 }
