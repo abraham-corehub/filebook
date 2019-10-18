@@ -11,7 +11,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/qor/admin"
-	"github.com/qor/media/oss"
+	"github.com/qor/media"
+	"github.com/qor/media/filesystem"
 	"github.com/qor/qor"
 	"github.com/qor/qor/resource"
 	"github.com/qor/qor/utils"
@@ -54,12 +55,18 @@ type Inward struct {
 	Date     time.Time
 	Category string
 	Remarks  string
-	Document oss.OSS
+	Document filesystem.FileSystem
 	Status   string
 }
 
 func main() {
 	dB, _ := gorm.Open("sqlite3", "dbp.db")
+	media.RegisterCallbacks(dB)
+
+	mux := http.NewServeMux()
+	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
+		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
+	}
 	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{})
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
@@ -116,8 +123,6 @@ func main() {
 		FieldName: "Remarks",
 		Type:      "text",
 	})
-
-	mux := http.NewServeMux()
 
 	ppdA.MountTo("/admin", mux)
 
