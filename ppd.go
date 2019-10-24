@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -26,6 +27,7 @@ type User struct {
 	Name      sql.NullString
 	Gender    string
 	Role      string
+	Height    int
 	Addresses []Address
 }
 
@@ -55,29 +57,61 @@ type Inward struct {
 	Date      time.Time
 	Category  string
 	Remarks   string
-	Documents Document
+	Documents []Document
 	Status    string
 }
 
-// Document is a custom type
+// Document is a gorm Model
 type Document struct {
-	oss.OSS
+	gorm.Model
+	InwardID uint
+	Document oss.OSS
+}
+
+// Range slider struct
+type Range struct {
+	Min    int
+	Max    int
+	Value  int
+	Step   int
+	Width  string
+	Height string
 }
 
 func main() {
+	initLog()
 	dB, _ := gorm.Open("sqlite3", "dbp.db")
+	dB.LogMode(true)
+
 	media.RegisterCallbacks(dB)
 
 	mux := http.NewServeMux()
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
-	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{})
+	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{}, &Document{})
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
 	inward := ppdA.AddResource(&Inward{})
+	ppdA.AddResource(&Document{})
 	ppdA.AddResource(&Department{})
+
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
+
+	user.Meta(&admin.Meta{
+		Name:      "Volume",
+		FieldName: "Volume",
+		Type:      "range",
+		Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
+		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+			record.(*Range).Min = 0
+			record.(*Range).Max = 100
+			record.(*Range).Value = 20
+			record.(*Range).Step = 1
+			record.(*Range).Width = "100%"
+			record.(*Range).Height = "50px"
+		},
+	})
 
 	user.Meta(&admin.Meta{
 		Name:      "Password",
@@ -93,7 +127,9 @@ func main() {
 	})
 	user.IndexAttrs("-Password")
 	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
+	//user.Meta(&admin.Meta{Name: "Volume", Type: "range"})
 	inward.Meta(&admin.Meta{Name: "Category", Config: &admin.SelectOneConfig{Collection: []string{"Tender", "Notice", "Record"}}})
+
 	inward.NewAttrs(
 		"Title",
 		&admin.Section{
@@ -122,6 +158,9 @@ func main() {
 		"Documents",
 	)
 
+	inward.IndexAttrs("-Documents", "-Status")
+	inward.SearchAttrs("Title", "From", "Date", "Status")
+
 	inward.Meta(&admin.Meta{Name: "As", Config: &admin.SelectOneConfig{Collection: []string{"Physical Document", "Telephone Enquiry"}}})
 	inward.Meta(&admin.Meta{
 		Name:      "Remarks",
@@ -130,9 +169,14 @@ func main() {
 	})
 
 	ppdA.MountTo("/admin", mux)
-
-	fmt.Println("Listening on: http://localhost:8080")
+	log.Println("ZOD Started!")
+	log.Println("Listening on: http://localhost:8080")
 	http.ListenAndServe(":8080", mux)
+}
+
+func initLog() {
+	log.SetPrefix("Log: ")
+	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
 }
 
 func strToSHA256(str string) []byte {
