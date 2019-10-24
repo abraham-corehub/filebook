@@ -1,0 +1,13 @@
+<div class="qor-field">
+  <div class="mdl-textfield mdl-textfield--full-width mdl-js-textfield">
+    <label class="qor-field__label mdl-textfield__label" for="{{.InputId}}">
+      {{meta_label .Meta}}
+    </label>
+    <div class="qor-field__show">{{.Value}}</div>
+    <div class="qor-field__edit">
+    <p style="width:{{.Width}}, height:{{.Height}}">
+      <input class="amdl-slider mdl-js-slider" type="range" id="{{.InputId}}" min="{{.Min}}" max="{{.Max}}" value="{{.Value}}" step="{{.Step}}" name="{{.InputName}}" {{if (not (has_change_permission .Meta)) }}disabled{{end}}>
+    </p>
+    </div>
+  </div>
+</div>

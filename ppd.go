@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
+
+	"github.com/ppd/config/bindatafs"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -27,7 +30,6 @@ type User struct {
 	Name      sql.NullString
 	Gender    string
 	Role      string
-	Height    int
 	Addresses []Address
 }
 
@@ -52,10 +54,10 @@ type Department struct {
 type Inward struct {
 	gorm.Model
 	Title     string
-	From      string
-	As        string
+	Source    string
+	Mode      string
+	Type      string
 	Date      time.Time
-	Category  string
 	Remarks   string
 	Documents []Document
 	Status    string
@@ -64,8 +66,9 @@ type Inward struct {
 // Document is a gorm Model
 type Document struct {
 	gorm.Model
-	InwardID uint
-	Document oss.OSS
+	InwardID   uint
+	Name       string
+	Attachment oss.OSS
 }
 
 // Range slider struct
@@ -93,26 +96,27 @@ func main() {
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
 	inward := ppdA.AddResource(&Inward{})
-	ppdA.AddResource(&Document{})
-	ppdA.AddResource(&Department{})
+	document := ppdA.AddResource(&Document{})
+	department := ppdA.AddResource(&Department{})
 
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
-
-	user.Meta(&admin.Meta{
-		Name:      "Volume",
-		FieldName: "Volume",
-		Type:      "range",
-		Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
-		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-			record.(*Range).Min = 0
-			record.(*Range).Max = 100
-			record.(*Range).Value = 20
-			record.(*Range).Step = 1
-			record.(*Range).Width = "100%"
-			record.(*Range).Height = "50px"
-		},
-	})
-
+	ppdA.AssetFS.RegisterPath(filepath.Join(utils.AppRoot, "views"))
+	/*
+		 user.Meta(&admin.Meta{
+				Name:      "Volume",
+				FieldName: "Volume",
+				Type:      "range",
+				Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					record.(*Range).Min = 0
+					record.(*Range).Max = 100
+					record.(*Range).Value = 20
+					record.(*Range).Step = 1
+					record.(*Range).Width = "100%"
+					record.(*Range).Height = "50px"
+				},
+			})
+	*/
 	user.Meta(&admin.Meta{
 		Name:      "Password",
 		FieldName: "Password",
@@ -128,50 +132,73 @@ func main() {
 	user.IndexAttrs("-Password")
 	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
 	//user.Meta(&admin.Meta{Name: "Volume", Type: "range"})
-	inward.Meta(&admin.Meta{Name: "Category", Config: &admin.SelectOneConfig{Collection: []string{"Tender", "Notice", "Record"}}})
-
-	inward.NewAttrs(
-		"Title",
-		&admin.Section{
-			Title: "Received",
-			Rows: [][]string{
-				{"From", "As"},
-				{"Date"},
-			},
-		},
-		"Category",
-		"Remarks",
-		"Documents",
-	)
-
-	inward.EditAttrs(
-		"Title",
-		&admin.Section{
-			Title: "Received",
-			Rows: [][]string{
-				{"From", "As"},
-				{"Date"},
-			},
-		},
-		"Category",
-		"Remarks",
-		"Documents",
-	)
-
-	inward.IndexAttrs("-Documents", "-Status")
-	inward.SearchAttrs("Title", "From", "Date", "Status")
-
-	inward.Meta(&admin.Meta{Name: "As", Config: &admin.SelectOneConfig{Collection: []string{"Physical Document", "Telephone Enquiry"}}})
+	inward.Meta(&admin.Meta{Name: "Type", Config: &admin.SelectOneConfig{Collection: []string{"Letter", "Application", "Tender", "Invitation"}}})
+	inward.Meta(&admin.Meta{Name: "Source", Config: &admin.SelectOneConfig{Collection: []string{"Individual", "Department", "Organisation"}}})
+	inward.Meta(&admin.Meta{Name: "Mode", Config: &admin.SelectOneConfig{Collection: []string{"By Hand", "Tele Call", "Email", "Web Enquiry"}}})
 	inward.Meta(&admin.Meta{
 		Name:      "Remarks",
 		FieldName: "Remarks",
 		Type:      "text",
 	})
 
+	inward.NewAttrs(
+		"Title",
+		&admin.Section{
+			Title: "Received From",
+			Rows: [][]string{
+				{"Source", "Mode"},
+				{"Type", "Date"},
+			},
+		},
+		"Remarks",
+		&admin.Section{
+			Rows: [][]string{
+				{"Documents"},
+			},
+		},
+	)
+	ppdA.AddSearchResource(inward, user, document, department)
+
+	inward.EditAttrs(
+		"Title",
+		&admin.Section{
+			Title: "Received From",
+			Rows: [][]string{
+				{"Source", "Mode"},
+				{"Type", "Date"},
+			},
+		},
+		"Remarks",
+		&admin.Section{
+			Rows: [][]string{
+				{"Documents"},
+			},
+		},
+	)
+
+	inward.IndexAttrs("-Documents", "-Status")
+
 	ppdA.MountTo("/admin", mux)
 	log.Println("ZOD Started!")
 	log.Println("Listening on: http://localhost:8080")
+	//log.Println(ppdA.AssetFS.Glob(""))
 	http.ListenAndServe(":8080", mux)
+}
+
+func main01() {
+	assetFS := bindatafs.AssetFS
+	// Register view paths into AssetFS
+	assetFS.RegisterPath("public")
+	assetFS.RegisterPath("public/static")
+	//assetFS.RegisterPath("<your_project>/vender/plugin/views")
+
+	// Compile templates under registered view paths into binary
+	//assetFS.Compile()
+
+	// Get file content with name
+	//fileContent, ok := assetFS.Asset("home/index.tmpl")
+	fileContent, ok := assetFS.Asset("testStatic.txt")
+	fmt.Println(ok, string(fileContent))
 }
 
 func initLog() {
