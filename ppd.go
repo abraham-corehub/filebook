@@ -60,6 +60,7 @@ type Inward struct {
 	Date      time.Time
 	Remarks   string
 	Documents []Document
+	Docs      []FileType
 	Status    string
 }
 
@@ -71,14 +72,11 @@ type Document struct {
 	Attachment oss.OSS
 }
 
-// Range slider struct
-type Range struct {
-	Min    int
-	Max    int
-	Value  int
-	Step   int
-	Width  string
-	Height string
+// FileType struct for File Types
+type FileType struct {
+	gorm.Model
+	InwardID uint
+	Name     string
 }
 
 func main() {
@@ -92,30 +90,29 @@ func main() {
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
-	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{}, &Document{})
+	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{}, &FileType{})
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
 	inward := ppdA.AddResource(&Inward{})
-	document := ppdA.AddResource(&Document{})
-	department := ppdA.AddResource(&Department{})
+	ppdA.AddResource(&Department{})
 
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
 	ppdA.AssetFS.RegisterPath(filepath.Join(utils.AppRoot, "views"))
 	/*
-		 user.Meta(&admin.Meta{
-				Name:      "Volume",
-				FieldName: "Volume",
-				Type:      "range",
-				Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
-				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-					record.(*Range).Min = 0
-					record.(*Range).Max = 100
-					record.(*Range).Value = 20
-					record.(*Range).Step = 1
-					record.(*Range).Width = "100%"
-					record.(*Range).Height = "50px"
-				},
-			})
+	   user.Meta(&admin.Meta{
+	      Name:      "Volume",
+	      FieldName: "Volume",
+	      Type:      "range",
+	      Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
+	      Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+	        record.(*Range).Min = 0
+	        record.(*Range).Max = 100
+	        record.(*Range).Value = 20
+	        record.(*Range).Step = 1
+	        record.(*Range).Width = "100%"
+	        record.(*Range).Height = "50px"
+	      },
+	    })
 	*/
 	user.Meta(&admin.Meta{
 		Name:      "Password",
@@ -131,7 +128,7 @@ func main() {
 	})
 	user.IndexAttrs("-Password")
 	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
-	//user.Meta(&admin.Meta{Name: "Volume", Type: "range"})
+
 	inward.Meta(&admin.Meta{Name: "Type", Config: &admin.SelectOneConfig{Collection: []string{"Letter", "Application", "Tender", "Invitation"}}})
 	inward.Meta(&admin.Meta{Name: "Source", Config: &admin.SelectOneConfig{Collection: []string{"Individual", "Department", "Organisation"}}})
 	inward.Meta(&admin.Meta{Name: "Mode", Config: &admin.SelectOneConfig{Collection: []string{"By Hand", "Tele Call", "Email", "Web Enquiry"}}})
@@ -140,6 +137,41 @@ func main() {
 		FieldName: "Remarks",
 		Type:      "text",
 	})
+
+	inward.Meta(&admin.Meta{
+		Name: "Docs",
+		Type: "file_upload",
+		Valuer: func(record interface{}, context *qor.Context) interface{} {
+			l := len(record.(*Inward).Docs)
+			if l > 0 {
+				return l
+			}
+			return "Nil"
+		},
+		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+			record.(*FileType).Name = utils.ToString(metaValue.Value)
+		},
+	})
+	inward.EditAttrs(
+		"Title",
+		&admin.Section{
+			Title: "Received From",
+			Rows: [][]string{
+				{"Source", "Mode"},
+				{"Type", "Date"},
+			},
+		},
+		"Remarks",
+		&admin.Section{
+			Rows: [][]string{
+				{"Docs", "Documents"},
+			},
+		},
+	)
+	inward.SearchAttrs(
+		"Title",
+		"Source",
+	)
 
 	inward.NewAttrs(
 		"Title",
@@ -153,30 +185,12 @@ func main() {
 		"Remarks",
 		&admin.Section{
 			Rows: [][]string{
-				{"Documents"},
-			},
-		},
-	)
-	ppdA.AddSearchResource(inward, user, document, department)
-
-	inward.EditAttrs(
-		"Title",
-		&admin.Section{
-			Title: "Received From",
-			Rows: [][]string{
-				{"Source", "Mode"},
-				{"Type", "Date"},
-			},
-		},
-		"Remarks",
-		&admin.Section{
-			Rows: [][]string{
-				{"Documents"},
+				{"Docs", "Documents"},
 			},
 		},
 	)
 
-	inward.IndexAttrs("-Documents", "-Status")
+	inward.IndexAttrs("-Status")
 
 	ppdA.MountTo("/admin", mux)
 	log.Println("ZOD Started!")
