@@ -47,21 +47,33 @@ type Address struct {
 // Department Create another GORM-backend model
 type Department struct {
 	gorm.Model
-	Name string
+	Name      string
+	Email     string
+	Addresses []Address
 }
 
 // Inward Create another GORM-backend model
 type Inward struct {
 	gorm.Model
 	Title     string
-	Source    string
+	Sender    SenderType
 	Mode      string
 	Type      string
 	Date      time.Time
 	Remarks   string
 	Documents []Document
-	Docs      []FileType
-	Status    string
+	//Docs      []FileType
+	Status string
+}
+
+// SenderType of Inwards
+type SenderType struct {
+	gorm.Model
+	InwardID  uint
+	Name      string
+	Type      string
+	Email     string
+	Addresses []Address
 }
 
 // Document is a gorm Model
@@ -90,14 +102,14 @@ func main() {
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
-	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{}, &FileType{})
+	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{})
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
 	inward := ppdA.AddResource(&Inward{})
 	ppdA.AddResource(&Department{})
 
 	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
-	ppdA.AssetFS.RegisterPath(filepath.Join(utils.AppRoot, "views"))
+	ppdA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
 	/*
 	   user.Meta(&admin.Meta{
 	      Name:      "Volume",
@@ -130,7 +142,7 @@ func main() {
 	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
 
 	inward.Meta(&admin.Meta{Name: "Type", Config: &admin.SelectOneConfig{Collection: []string{"Letter", "Application", "Tender", "Invitation"}}})
-	inward.Meta(&admin.Meta{Name: "Source", Config: &admin.SelectOneConfig{Collection: []string{"Individual", "Department", "Organisation"}}})
+	inward.Meta(&admin.Meta{Name: "Sender", Config: &admin.SelectOneConfig{Collection: []string{"Individual", "Department", "Organisation"}}})
 	inward.Meta(&admin.Meta{Name: "Mode", Config: &admin.SelectOneConfig{Collection: []string{"By Hand", "Tele Call", "Email", "Web Enquiry"}}})
 	inward.Meta(&admin.Meta{
 		Name:      "Remarks",
@@ -138,33 +150,35 @@ func main() {
 		Type:      "text",
 	})
 
-	inward.Meta(&admin.Meta{
-		Name: "Docs",
-		Type: "file_upload",
-		Valuer: func(record interface{}, context *qor.Context) interface{} {
-			l := len(record.(*Inward).Docs)
-			if l > 0 {
-				return l
-			}
-			return "Nil"
-		},
-		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-			record.(*FileType).Name = utils.ToString(metaValue.Value)
-		},
-	})
+	/*
+			inward.Meta(&admin.Meta{
+				Name: "Docs",
+				Type: "file_upload",
+				Valuer: func(record interface{}, context *qor.Context) interface{} {
+					l := len(record.(*Inward).Docs)
+					if l > 0 {
+						return l
+					}
+					return "Nil"
+				},
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					record.(*FileType).Name = utils.ToString(metaValue.Value)
+				},
+		 })
+	*/
 	inward.EditAttrs(
 		"Title",
 		&admin.Section{
 			Title: "Received From",
 			Rows: [][]string{
-				{"Source", "Mode"},
+				{"Sender", "Mode"},
 				{"Type", "Date"},
 			},
 		},
 		"Remarks",
 		&admin.Section{
 			Rows: [][]string{
-				{"Docs", "Documents"},
+				{"Documents"},
 			},
 		},
 	)
@@ -178,14 +192,14 @@ func main() {
 		&admin.Section{
 			Title: "Received From",
 			Rows: [][]string{
-				{"Source", "Mode"},
+				{"Sender", "Mode"},
 				{"Type", "Date"},
 			},
 		},
 		"Remarks",
 		&admin.Section{
 			Rows: [][]string{
-				{"Docs", "Documents"},
+				{"Documents"},
 			},
 		},
 	)
