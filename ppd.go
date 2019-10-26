@@ -267,6 +267,19 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Files",
 		)
 
+		inward.ShowAttrs(
+			"Title",
+			"Sender",
+			&admin.Section{
+				Title: "Inward Details",
+				Rows: [][]string{
+					{"Type", "Mode"},
+					{"Date", "Remarks"},
+					{"Status"},
+				},
+			},
+			"Files",
+		)
 		senderMeta := inward.Meta(&admin.Meta{
 			Name: "Sender",
 		})
