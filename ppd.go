@@ -38,9 +38,9 @@ type User struct {
 type Seat struct {
 	gorm.Model
 	Name            string
-	DepartmentID    uint
 	UserID          uint
 	DelegatedUserID uint
+	DepartmentID    uint
 	BranchID        uint
 	OrganizationID  uint
 }
@@ -146,13 +146,14 @@ func main() {
 	loadRes("User", ppdA)
 	loadRes("Inward", ppdA)
 
-	log.Println("ZOD Started!")
-	log.Println("Listening on: http://localhost:8080")
 	mux := http.NewServeMux()
 	ppdA.MountTo("/admin", mux)
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
+
+	log.Println("ZOD Started!")
+	log.Println("Listening on: http://localhost:8080")
 	http.ListenAndServe(":8080", mux)
 }
 
