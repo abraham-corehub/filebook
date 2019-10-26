@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<photobook scheme="1.0">
+    <title>Sitemap - PhotoBook</title>
+    <date>2019/09/28</date>
+    <page>
+        <title>login</title>
+        <page>
+            <title>admin</title>
+            <page>
+                <title>home</title>
+                <page>
+                    <title>create user</title>
+                </page>
+                <page>
+                    <title>view user</title>
+                    <page>
+                        <title>create album</title>
+                    </page>
+                    <page>
+                        <title>view album</title>
+                        <page>
+                            <title>create image</title>
+                        </page>
+                        <page>
+                            <title>view image</title>
+                        </page>
+                        <page>
+                            <title>rename image</title>
+                        </page>
+                        <page>
+                            <title>delete image</title>
+                        </page>
+                        <page>
+                            <title>download album</title>
+                        </page>
+                    </page>
+                    <page>
+                        <title>rename album</title>
+                    </page>
+                    <page>
+                        <title>delete album</title>
+                    </page>
+                </page>
+                <page>
+                    <title>update user</title>
+                </page>
+                <page>
+                    <title>reset user</title>
+                </page>
+                <page>
+                    <title>delete user</title>
+                </page>
+            </page>
+            <page>
+                <title>logout</title>
+            </page>
+            <page>
+                <title>quit</title>
+            </page>
+        </page>
+        <page>
+            <title>user</title>
+            <page>
+                <title>home</title>
+                <page>
+                    <title>create album</title>
+                </page>
+                <page>
+                    <title>view album</title>
+                    <page>
+                        <title>upload image</title>
+                    </page>
+                    <page>
+                        <title>view image</title>
+                    </page>
+                    <page>
+                        <title>rename image</title>
+                    </page>
+                    <page>
+                        <title>download album</title>
+                    </page>
+                </page>
+                <page>
+                    <title>rename album</title>
+                </page>
+            </page>
+            <page>
+                <title>logout</title>
+            </page>
+            <page>
+                <title>quit</title>
+            </page>
+        </page>
+    </page>
+</photobook>

@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -149,6 +150,9 @@ func main() {
 	log.Println("Listening on: http://localhost:8080")
 	mux := http.NewServeMux()
 	ppdA.MountTo("/admin", mux)
+	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
+		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
+	}
 	http.ListenAndServe(":8080", mux)
 }
 
