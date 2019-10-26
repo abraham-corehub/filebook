@@ -2,15 +2,11 @@ package main
 
 import (
 	"crypto/sha1"
-	"database/sql"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"net/http"
 	"path/filepath"
 	"time"
-
-	"github.com/ppd/config/bindatafs"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
@@ -25,55 +21,89 @@ import (
 // User Create a GORM-backend model
 type User struct {
 	gorm.Model
-	Email     string
-	Password  string
-	Name      sql.NullString
-	Gender    string
-	Role      string
-	Addresses []Address
+	Name           string
+	Phone          string
+	Email          string
+	Password       string
+	Dob            time.Time
+	Gender         string
+	Addresses      []Address
+	SeatID         uint
+	DepartmentID   uint
+	OrganizationID uint
+}
+
+// Seat is gorm model
+type Seat struct {
+	gorm.Model
+	Name            string
+	DepartmentID    uint
+	UserID          uint
+	DelegatedUserID uint
+	BranchID        uint
+	OrganizationID  uint
 }
 
 // Address Create a GORM-backend model
 type Address struct {
 	gorm.Model
 	UserID      uint
-	ContactName string `form:"contact-name"`
-	Phone       string `form:"phone"`
-	City        string `form:"city"`
-	Address1    string `form:"address1"`
-	Address2    string `form:"address2"`
+	ContactName string
+	Building    string
+	Street      string
+	Locality    string
+	City        string
+	Pincode     string
 }
 
 // Department Create another GORM-backend model
 type Department struct {
 	gorm.Model
-	Name      string
-	Email     string
-	Addresses []Address
+	Name    string
+	Email   string
+	Address Address
 }
 
 // Inward Create another GORM-backend model
 type Inward struct {
 	gorm.Model
-	Title     string
-	Sender    SenderType
-	Mode      string
-	Type      string
-	Date      time.Time
-	Remarks   string
-	Documents []Document
-	//Docs      []FileType
-	Status string
+	Title   string
+	Sender  Sender
+	Mode    string
+	Type    string
+	Date    time.Time
+	Remarks string
+	Files   []Document
+	Status  string
 }
 
-// SenderType of Inwards
-type SenderType struct {
+// Sender of Inwards
+type Sender struct {
 	gorm.Model
-	InwardID  uint
+	InwardID uint
+	Name     string
+	Type     string
+	Email    string
+	Address  Address
+}
+
+// Organization model
+type Organization struct {
+	gorm.Model
 	Name      string
-	Type      string
-	Email     string
-	Addresses []Address
+	Address   Address
+	Contact   string
+	Website   string
+	PRContact string
+}
+
+// Branch model
+type Branch struct {
+	gorm.Model
+	Name    string
+	Address Address
+	Contact string
+	Website string
 }
 
 // Document is a gorm Model
@@ -94,144 +124,186 @@ type FileType struct {
 func main() {
 	initLog()
 	dB, _ := gorm.Open("sqlite3", "dbp.db")
+	media.RegisterCallbacks(dB)
 	dB.LogMode(true)
 
-	media.RegisterCallbacks(dB)
-
-	mux := http.NewServeMux()
-	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
-		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
-	}
-	dB.AutoMigrate(&User{}, &Department{}, &Inward{}, &Address{})
+	dB.AutoMigrate(
+		&User{},
+		&Seat{},
+		&Department{},
+		&Organization{},
+		&Branch{},
+		&Inward{},
+		&Address{},
+		&Sender{},
+	)
 
 	ppdA := admin.New(&admin.AdminConfig{DB: dB})
-	inward := ppdA.AddResource(&Inward{})
-	ppdA.AddResource(&Department{})
-
-	user := ppdA.AddResource(&User{}, &admin.Config{Menu: []string{"User Management"}})
 	ppdA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
-	/*
-	   user.Meta(&admin.Meta{
-	      Name:      "Volume",
-	      FieldName: "Volume",
-	      Type:      "range",
-	      Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
-	      Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-	        record.(*Range).Min = 0
-	        record.(*Range).Max = 100
-	        record.(*Range).Value = 20
-	        record.(*Range).Step = 1
-	        record.(*Range).Width = "100%"
-	        record.(*Range).Height = "50px"
-	      },
-	    })
-	*/
-	user.Meta(&admin.Meta{
-		Name:      "Password",
-		FieldName: "Password",
-		Type:      "password",
-		Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
-		Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-			if newPassword := utils.ToString(metaValue.Value); newPassword != "" {
-				pWSHA := strToSHA256(newPassword)
-				record.(*User).Password = string(pWSHA)
-			}
-		},
-	})
-	user.IndexAttrs("-Password")
-	user.Meta(&admin.Meta{Name: "Role", Config: &admin.SelectOneConfig{Collection: []string{"Admin", "Inward Admin", "Inward User", "Root"}}})
 
-	inward.Meta(&admin.Meta{Name: "Type", Config: &admin.SelectOneConfig{Collection: []string{"Letter", "Application", "Tender", "Invitation"}}})
-	inward.Meta(&admin.Meta{Name: "Sender", Config: &admin.SelectOneConfig{Collection: []string{"Individual", "Department", "Organisation"}}})
-	inward.Meta(&admin.Meta{Name: "Mode", Config: &admin.SelectOneConfig{Collection: []string{"By Hand", "Tele Call", "Email", "Web Enquiry"}}})
-	inward.Meta(&admin.Meta{
-		Name:      "Remarks",
-		FieldName: "Remarks",
-		Type:      "text",
-	})
+	loadMasters(ppdA)
+	loadRes("User", ppdA)
+	loadRes("Inward", ppdA)
 
-	/*
-			inward.Meta(&admin.Meta{
-				Name: "Docs",
-				Type: "file_upload",
-				Valuer: func(record interface{}, context *qor.Context) interface{} {
-					l := len(record.(*Inward).Docs)
-					if l > 0 {
-						return l
-					}
-					return "Nil"
-				},
-				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-					record.(*FileType).Name = utils.ToString(metaValue.Value)
-				},
-		 })
-	*/
-	inward.EditAttrs(
-		"Title",
-		&admin.Section{
-			Title: "Received From",
-			Rows: [][]string{
-				{"Sender", "Mode"},
-				{"Type", "Date"},
-			},
-		},
-		"Remarks",
-		&admin.Section{
-			Rows: [][]string{
-				{"Documents"},
-			},
-		},
-	)
-	inward.SearchAttrs(
-		"Title",
-		"Source",
-	)
-
-	inward.NewAttrs(
-		"Title",
-		&admin.Section{
-			Title: "Received From",
-			Rows: [][]string{
-				{"Sender", "Mode"},
-				{"Type", "Date"},
-			},
-		},
-		"Remarks",
-		&admin.Section{
-			Rows: [][]string{
-				{"Documents"},
-			},
-		},
-	)
-
-	inward.IndexAttrs("-Status")
-
-	ppdA.MountTo("/admin", mux)
 	log.Println("ZOD Started!")
 	log.Println("Listening on: http://localhost:8080")
-	//log.Println(ppdA.AssetFS.Glob(""))
+	mux := http.NewServeMux()
+	ppdA.MountTo("/admin", mux)
 	http.ListenAndServe(":8080", mux)
-}
-
-func main01() {
-	assetFS := bindatafs.AssetFS
-	// Register view paths into AssetFS
-	assetFS.RegisterPath("public")
-	assetFS.RegisterPath("public/static")
-	//assetFS.RegisterPath("<your_project>/vender/plugin/views")
-
-	// Compile templates under registered view paths into binary
-	//assetFS.Compile()
-
-	// Get file content with name
-	//fileContent, ok := assetFS.Asset("home/index.tmpl")
-	fileContent, ok := assetFS.Asset("testStatic.txt")
-	fmt.Println(ok, string(fileContent))
 }
 
 func initLog() {
 	log.SetPrefix("Log: ")
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
+}
+
+func loadMasters(ppdA *admin.Admin) {
+	fileMConf := admin.Config{
+		Menu: []string{
+			"File Management",
+		},
+	}
+	admtrnConf := admin.Config{
+		Menu: []string{
+			"Administration",
+		},
+	}
+
+	ppdA.AddResource(&Inward{}, &fileMConf)
+	ppdA.AddResource(&User{}, &admtrnConf)
+	ppdA.AddResource(&Seat{}, &admtrnConf)
+	ppdA.AddResource(&Department{}, &admtrnConf)
+	ppdA.AddResource(&Organization{}, &admtrnConf)
+	ppdA.AddResource(&Branch{}, &admtrnConf)
+}
+
+func loadRes(nR string, ppdA *admin.Admin) {
+	switch nR {
+	case "User":
+		user := ppdA.GetResource(nR)
+		user.IndexAttrs("-Password")
+		user.Meta(&admin.Meta{
+			Name:      "Password",
+			FieldName: "password",
+			Type:      "password",
+			Valuer:    func(interface{}, *qor.Context) interface{} { return "" },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newPassword := utils.ToString(metaValue.Value); newPassword != "" {
+					//pWSHA := strToSHA256(newPassword)
+					record.(*User).Password = string(newPassword)
+				}
+			},
+		})
+		user.Meta(&admin.Meta{
+			Name: "Gender",
+			Config: &admin.SelectOneConfig{
+				Collection: []string{
+					"Male",
+					"Female",
+					"Other",
+				},
+			},
+		})
+
+		user.Meta(&admin.Meta{
+			Name: "Dob",
+			Type: "date",
+		})
+
+	case "Inward":
+		inward := ppdA.GetResource(nR)
+		inward.Meta(&admin.Meta{
+			Name: "Type",
+			Config: &admin.SelectOneConfig{
+				Collection: []string{
+					"Letter",
+					"Application",
+					"Tender",
+					"Invitation",
+				},
+			},
+		})
+
+		inward.Meta(&admin.Meta{
+			Name: "Mode",
+			Config: &admin.SelectOneConfig{
+				Collection: []string{
+					"By Hand",
+					"Tele Call",
+					"Email",
+					"Web Enquiry",
+				},
+			},
+		})
+
+		inward.Meta(&admin.Meta{
+			Name: "Status",
+			Config: &admin.SelectOneConfig{
+				Collection: []string{
+					"Received",
+					"Opened",
+					"Processed",
+					"Rejected",
+				},
+			},
+		})
+
+		inward.EditAttrs(
+			"Title",
+			"Sender",
+			&admin.Section{
+				Title: "Inward Details",
+				Rows: [][]string{
+					{"Type", "Mode"},
+					{"Date", "Remarks"},
+					{"Status"},
+				},
+			},
+			"Files",
+		)
+
+		senderMeta := inward.Meta(&admin.Meta{
+			Name: "Sender",
+		})
+
+		senderResource := senderMeta.Resource
+		senderResource.EditAttrs(
+			&admin.Section{
+				Rows: [][]string{
+					{"Type", "Name"},
+					{"Email"},
+					{"Address"},
+				},
+			})
+
+		senderResource.ShowAttrs(
+			"Type",
+			"Name",
+			"Email",
+			"Address",
+		)
+
+		senderResource.Meta(&admin.Meta{
+			Name: "Type",
+			Config: &admin.SelectOneConfig{
+				Collection: []string{
+					"Individual",
+					"Department",
+					"Organization",
+				},
+			},
+		})
+		inward.Meta(&admin.Meta{
+			Name:      "Remarks",
+			FieldName: "Remarks",
+			Type:      "text",
+		})
+
+		inward.IndexAttrs(
+			"-Files",
+			"-Remarks",
+		)
+	}
 }
 
 func strToSHA256(str string) []byte {
