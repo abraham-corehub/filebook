@@ -48,13 +48,16 @@ type Seat struct {
 // Address Create a GORM-backend model
 type Address struct {
 	gorm.Model
-	UserID      uint
-	ContactName string
-	Building    string
-	Street      string
-	Locality    string
-	City        string
-	Pincode     string
+	UserID uint
+	/*
+		ContactName string
+		Building    string
+		Street      string
+		Locality    string
+		City        string
+	*/
+	Address string
+	Pincode string
 }
 
 // Department Create another GORM-backend model
@@ -62,7 +65,7 @@ type Department struct {
 	gorm.Model
 	Name    string
 	Email   string
-	Address Address
+	Address string
 }
 
 // Inward Create another GORM-backend model
@@ -85,14 +88,14 @@ type Sender struct {
 	Name     string
 	Type     string
 	Email    string
-	Address  Address
+	Address  string
 }
 
 // Organization model
 type Organization struct {
 	gorm.Model
 	Name      string
-	Address   Address
+	Address   string
 	Contact   string
 	Website   string
 	PRContact string
@@ -102,7 +105,7 @@ type Organization struct {
 type Branch struct {
 	gorm.Model
 	Name    string
-	Address Address
+	Address string
 	Contact string
 	Website string
 }
@@ -267,7 +270,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Files",
 		)
 
-		inward.ShowAttrs(
+		inward.NewAttrs(
 			"Title",
 			"Sender",
 			&admin.Section{
@@ -280,12 +283,12 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			},
 			"Files",
 		)
-		senderMeta := inward.Meta(&admin.Meta{
+		sndrMeta := inward.Meta(&admin.Meta{
 			Name: "Sender",
 		})
 
-		senderResource := senderMeta.Resource
-		senderResource.EditAttrs(
+		sndrRes := sndrMeta.Resource
+		sndrRes.EditAttrs(
 			&admin.Section{
 				Rows: [][]string{
 					{"Type", "Name"},
@@ -294,14 +297,16 @@ func loadRes(nR string, ppdA *admin.Admin) {
 				},
 			})
 
-		senderResource.ShowAttrs(
-			"Type",
-			"Name",
-			"Email",
-			"Address",
-		)
+		sndrRes.NewAttrs(
+			&admin.Section{
+				Rows: [][]string{
+					{"Type", "Name"},
+					{"Email"},
+					{"Address"},
+				},
+			})
 
-		senderResource.Meta(&admin.Meta{
+		sndrRes.Meta(&admin.Meta{
 			Name: "Type",
 			Config: &admin.SelectOneConfig{
 				Collection: []string{
@@ -311,9 +316,38 @@ func loadRes(nR string, ppdA *admin.Admin) {
 				},
 			},
 		})
+
+		/*
+			addrMeta := sndrRes.Meta(&admin.Meta{
+				Name: "Address",
+			})
+
+			addrRes := addrMeta.Resource
+		*/
+		sndrRes.Meta(&admin.Meta{
+			Name:      "Address",
+			FieldName: "address",
+			Type:      "text",
+		})
+
+		/*
+			addrRes.EditAttrs(
+				&admin.Section{
+					Rows: [][]string{
+						{"Address", "Pincode"},
+					},
+				})
+
+			addrRes.NewAttrs(
+				&admin.Section{
+					Rows: [][]string{
+						{"Address", "Pincode"},
+					},
+				})
+		*/
 		inward.Meta(&admin.Meta{
 			Name:      "Remarks",
-			FieldName: "Remarks",
+			FieldName: "remarks",
 			Type:      "text",
 		})
 
