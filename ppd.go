@@ -317,34 +317,12 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			},
 		})
 
-		/*
-			addrMeta := sndrRes.Meta(&admin.Meta{
-				Name: "Address",
-			})
-
-			addrRes := addrMeta.Resource
-		*/
 		sndrRes.Meta(&admin.Meta{
 			Name:      "Address",
 			FieldName: "address",
 			Type:      "text",
 		})
 
-		/*
-			addrRes.EditAttrs(
-				&admin.Section{
-					Rows: [][]string{
-						{"Address", "Pincode"},
-					},
-				})
-
-			addrRes.NewAttrs(
-				&admin.Section{
-					Rows: [][]string{
-						{"Address", "Pincode"},
-					},
-				})
-		*/
 		inward.Meta(&admin.Meta{
 			Name:      "Remarks",
 			FieldName: "remarks",
