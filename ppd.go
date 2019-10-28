@@ -264,7 +264,8 @@ func loadRes(nR string, ppdA *admin.Admin) {
 
 		rowsMenuInwardDetails := [][]string{
 			{"Type", "Mode"},
-			{"Date", "Remarks"},
+			{"Date"},
+			{"Remarks"},
 		}
 
 		rowsMenuSenderDetails := [][]string{
