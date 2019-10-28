@@ -189,6 +189,13 @@ func loadRes(nR string, ppdA *admin.Admin) {
 	switch nR {
 	case "User":
 		user := ppdA.GetResource(nR)
+		genderTypes := []string{
+			"Male",
+			"Female",
+			"Other",
+			"Unfilled",
+		}
+
 		user.IndexAttrs("-Password")
 		user.Meta(&admin.Meta{
 			Name:      "Password",
@@ -205,11 +212,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 		user.Meta(&admin.Meta{
 			Name: "Gender",
 			Config: &admin.SelectOneConfig{
-				Collection: []string{
-					"Male",
-					"Female",
-					"Other",
-				},
+				Collection: genderTypes,
 			},
 		})
 
@@ -218,69 +221,97 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			Type: "date",
 		})
 
+		// Filter users by gender
+		user.Filter(&admin.Filter{
+			Name: "Gender",
+			Config: &admin.SelectOneConfig{
+				Collection: genderTypes,
+			},
+		})
+
 	case "Inward":
 		inward := ppdA.GetResource(nR)
+
+		typeInward := []string{
+			"Letter",
+			"Application",
+			"Tender",
+			"Invitation",
+		}
+
+		modeInward := []string{
+			"By Hand",
+			"Tele Call",
+			"Email",
+			"Web Enquiry",
+		}
+
+		statusInward := []string{
+			"Received",
+			"Opened",
+			"Processed",
+			"Rejected",
+		}
+
+		typeSender := []string{
+			"Individual",
+			"Department",
+			"Organization",
+		}
+
+		rowsMenuInwardDetails := [][]string{
+			{"Type", "Mode"},
+			{"Date", "Remarks"},
+			{"Status"},
+		}
+
+		rowsMenuSenderDetails := [][]string{
+			{"Type", "Name"},
+			{"Email"},
+			{"Address"},
+		}
+
+		sectionInwardDetails := &admin.Section{
+			Title: "Inward Details",
+			Rows:  rowsMenuInwardDetails,
+		}
+
+		sectionSenderDetails := &admin.Section{
+			Rows: rowsMenuSenderDetails,
+		}
+
 		inward.Meta(&admin.Meta{
 			Name: "Type",
 			Config: &admin.SelectOneConfig{
-				Collection: []string{
-					"Letter",
-					"Application",
-					"Tender",
-					"Invitation",
-				},
+				Collection: typeInward,
 			},
 		})
 
 		inward.Meta(&admin.Meta{
 			Name: "Mode",
 			Config: &admin.SelectOneConfig{
-				Collection: []string{
-					"By Hand",
-					"Tele Call",
-					"Email",
-					"Web Enquiry",
-				},
+				Collection: modeInward,
 			},
 		})
 
 		inward.Meta(&admin.Meta{
 			Name: "Status",
 			Config: &admin.SelectOneConfig{
-				Collection: []string{
-					"Received",
-					"Opened",
-					"Processed",
-					"Rejected",
-				},
+				Collection: statusInward,
 			},
 		})
 
 		inward.EditAttrs(
 			"Title",
 			"Sender",
-			&admin.Section{
-				Title: "Inward Details",
-				Rows: [][]string{
-					{"Type", "Mode"},
-					{"Date", "Remarks"},
-					{"Status"},
-				},
-			},
+			sectionInwardDetails,
 			"Files",
 		)
 
 		inward.NewAttrs(
 			"Title",
 			"Sender",
-			&admin.Section{
-				Title: "Inward Details",
-				Rows: [][]string{
-					{"Type", "Mode"},
-					{"Date", "Remarks"},
-					{"Status"},
-				},
-			},
+			sectionInwardDetails,
 			"Files",
 		)
 		sndrMeta := inward.Meta(&admin.Meta{
@@ -288,32 +319,19 @@ func loadRes(nR string, ppdA *admin.Admin) {
 		})
 
 		sndrRes := sndrMeta.Resource
+
 		sndrRes.EditAttrs(
-			&admin.Section{
-				Rows: [][]string{
-					{"Type", "Name"},
-					{"Email"},
-					{"Address"},
-				},
-			})
+			sectionSenderDetails,
+		)
 
 		sndrRes.NewAttrs(
-			&admin.Section{
-				Rows: [][]string{
-					{"Type", "Name"},
-					{"Email"},
-					{"Address"},
-				},
-			})
+			sectionSenderDetails,
+		)
 
 		sndrRes.Meta(&admin.Meta{
 			Name: "Type",
 			Config: &admin.SelectOneConfig{
-				Collection: []string{
-					"Individual",
-					"Department",
-					"Organization",
-				},
+				Collection: typeSender,
 			},
 		})
 
@@ -333,7 +351,30 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"-Files",
 			"-Remarks",
 		)
+
+		for _, tI := range typeInward {
+			inward.Scope(&admin.Scope{Name: tI, Group: "Inward Type", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
+				return db.Where("Type = ?", tI)
+			},
+			})
+		}
+
+		for _, mI := range modeInward {
+			inward.Scope(&admin.Scope{Name: mI, Group: "Inward Mode", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
+				return db.Where("Mode = ?", mI)
+			},
+			})
+		}
+
+		for _, sI := range statusInward {
+			inward.Scope(&admin.Scope{Name: sI, Group: "Status", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
+				return db.Where("Status = ?", sI)
+			},
+			})
+		}
+
 	}
+
 }
 
 func strToSHA256(str string) []byte {
