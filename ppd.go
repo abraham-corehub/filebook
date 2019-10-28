@@ -65,6 +65,7 @@ type Department struct {
 	gorm.Model
 	Name    string
 	Email   string
+	Phone   string
 	Address string
 }
 
@@ -88,6 +89,7 @@ type Sender struct {
 	Name     string
 	Type     string
 	Email    string
+	Phone    string
 	Address  string
 }
 
@@ -267,7 +269,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 
 		rowsMenuSenderDetails := [][]string{
 			{"Type", "Name"},
-			{"Email"},
+			{"Email", "Phone"},
 			{"Address"},
 		}
 
@@ -315,11 +317,11 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Files",
 		)
 
-		sndrMeta := inward.Meta(&admin.Meta{
+		metaSender := inward.Meta(&admin.Meta{
 			Name: "Sender",
 		})
 
-		sndrRes := sndrMeta.Resource
+		sndrRes := metaSender.Resource
 
 		sndrRes.EditAttrs(
 			sectionSenderDetails,
@@ -340,12 +342,14 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			Name:      "Address",
 			FieldName: "address",
 			Type:      "text",
+			Setter:    fnSetter("Address"),
 		})
 
 		inward.Meta(&admin.Meta{
 			Name:      "Remarks",
 			FieldName: "remarks",
 			Type:      "text",
+			Setter:    fnSetter("Remarks"),
 		})
 
 		inward.IndexAttrs(
@@ -372,6 +376,19 @@ func loadRes(nR string, ppdA *admin.Admin) {
 					Group:   n,
 					Handler: handlerScope(n, f),
 				})
+			}
+		}
+	}
+}
+
+func fnSetter(s string) func(interface{}, *resource.MetaValue, *qor.Context) {
+	return func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+		if nV := utils.ToString(mV.Value); nV != "" {
+			switch s {
+			case "Address":
+				r.(*Sender).Address = string(nV)
+			case "Remarks":
+				r.(*Inward).Remarks = string(nV)
 			}
 		}
 	}
