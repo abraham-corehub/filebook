@@ -166,23 +166,24 @@ func initLog() {
 }
 
 func loadMasters(ppdA *admin.Admin) {
-	fileMConf := admin.Config{
+	confFMgt := admin.Config{
 		Menu: []string{
 			"File Management",
 		},
 	}
-	admtrnConf := admin.Config{
+
+	confAdmn := admin.Config{
 		Menu: []string{
 			"Administration",
 		},
 	}
 
-	ppdA.AddResource(&Inward{}, &fileMConf)
-	ppdA.AddResource(&User{}, &admtrnConf)
-	ppdA.AddResource(&Seat{}, &admtrnConf)
-	ppdA.AddResource(&Department{}, &admtrnConf)
-	ppdA.AddResource(&Organization{}, &admtrnConf)
-	ppdA.AddResource(&Branch{}, &admtrnConf)
+	ppdA.AddResource(&Inward{}, &confFMgt)
+	ppdA.AddResource(&User{}, &confAdmn)
+	ppdA.AddResource(&Seat{}, &confAdmn)
+	ppdA.AddResource(&Department{}, &confAdmn)
+	ppdA.AddResource(&Organization{}, &confAdmn)
+	ppdA.AddResource(&Branch{}, &confAdmn)
 }
 
 func loadRes(nR string, ppdA *admin.Admin) {
@@ -194,6 +195,10 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Female",
 			"Other",
 			"Unfilled",
+		}
+
+		configGenderTypes := &admin.SelectOneConfig{
+			Collection: genderTypes,
 		}
 
 		user.IndexAttrs("-Password")
@@ -210,10 +215,8 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			},
 		})
 		user.Meta(&admin.Meta{
-			Name: "Gender",
-			Config: &admin.SelectOneConfig{
-				Collection: genderTypes,
-			},
+			Name:   "Gender",
+			Config: configGenderTypes,
 		})
 
 		user.Meta(&admin.Meta{
@@ -223,37 +226,35 @@ func loadRes(nR string, ppdA *admin.Admin) {
 
 		// Filter users by gender
 		user.Filter(&admin.Filter{
-			Name: "Gender",
-			Config: &admin.SelectOneConfig{
-				Collection: genderTypes,
-			},
+			Name:   "Gender",
+			Config: configGenderTypes,
 		})
 
 	case "Inward":
 		inward := ppdA.GetResource(nR)
 
-		typeInward := []string{
+		typesInward := []string{
 			"Letter",
 			"Application",
 			"Tender",
 			"Invitation",
 		}
 
-		modeInward := []string{
+		modesInward := []string{
 			"By Hand",
 			"Tele Call",
 			"Email",
 			"Web Enquiry",
 		}
 
-		statusInward := []string{
+		statusesInward := []string{
 			"Received",
 			"Opened",
 			"Processed",
 			"Rejected",
 		}
 
-		typeSender := []string{
+		typesSender := []string{
 			"Individual",
 			"Department",
 			"Organization",
@@ -262,7 +263,6 @@ func loadRes(nR string, ppdA *admin.Admin) {
 		rowsMenuInwardDetails := [][]string{
 			{"Type", "Mode"},
 			{"Date", "Remarks"},
-			{"Status"},
 		}
 
 		rowsMenuSenderDetails := [][]string{
@@ -283,21 +283,21 @@ func loadRes(nR string, ppdA *admin.Admin) {
 		inward.Meta(&admin.Meta{
 			Name: "Type",
 			Config: &admin.SelectOneConfig{
-				Collection: typeInward,
+				Collection: typesInward,
 			},
 		})
 
 		inward.Meta(&admin.Meta{
 			Name: "Mode",
 			Config: &admin.SelectOneConfig{
-				Collection: modeInward,
+				Collection: modesInward,
 			},
 		})
 
 		inward.Meta(&admin.Meta{
 			Name: "Status",
 			Config: &admin.SelectOneConfig{
-				Collection: statusInward,
+				Collection: statusesInward,
 			},
 		})
 
@@ -314,6 +314,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			sectionInwardDetails,
 			"Files",
 		)
+
 		sndrMeta := inward.Meta(&admin.Meta{
 			Name: "Sender",
 		})
@@ -331,7 +332,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 		sndrRes.Meta(&admin.Meta{
 			Name: "Type",
 			Config: &admin.SelectOneConfig{
-				Collection: typeSender,
+				Collection: typesSender,
 			},
 		})
 
@@ -352,29 +353,34 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"-Remarks",
 		)
 
-		for _, tI := range typeInward {
-			inward.Scope(&admin.Scope{Name: tI, Group: "Inward Type", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
-				return db.Where("Type = ?", tI)
-			},
-			})
+		fieldsScope := [][]string{
+			typesInward,
+			modesInward,
+			statusesInward,
 		}
 
-		for _, mI := range modeInward {
-			inward.Scope(&admin.Scope{Name: mI, Group: "Inward Mode", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
-				return db.Where("Mode = ?", mI)
-			},
-			})
+		namesScope := []string{
+			"Type",
+			"Mode",
+			"Status",
 		}
 
-		for _, sI := range statusInward {
-			inward.Scope(&admin.Scope{Name: sI, Group: "Status", Handler: func(db *gorm.DB, context *qor.Context) *gorm.DB {
-				return db.Where("Status = ?", sI)
-			},
-			})
+		for i, n := range namesScope {
+			for _, f := range fieldsScope[i] {
+				inward.Scope(&admin.Scope{
+					Name:    f,
+					Group:   n,
+					Handler: handlerScope(n, f),
+				})
+			}
 		}
-
 	}
+}
 
+func handlerScope(n string, f string) func(*gorm.DB, *qor.Context) *gorm.DB {
+	return func(db *gorm.DB, context *qor.Context) *gorm.DB {
+		return db.Where(n+" = ?", f)
+	}
 }
 
 func strToSHA256(str string) []byte {
