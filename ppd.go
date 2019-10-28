@@ -318,6 +318,18 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Files",
 		)
 
+		inward.SearchAttrs(
+			"ID",
+			"Title",
+			"Sender.Name",
+			"Status",
+		)
+
+		oldSearchHandler := inward.SearchHandler
+		inward.SearchHandler = func(keyword string, context *qor.Context) *gorm.DB {
+			return oldSearchHandler(keyword, context)
+		}
+
 		metaSender := inward.Meta(&admin.Meta{
 			Name: "Sender",
 		})
@@ -379,6 +391,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 				})
 			}
 		}
+
 	}
 }
 
