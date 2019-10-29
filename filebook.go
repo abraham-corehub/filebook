@@ -140,19 +140,20 @@ func main() {
 		&Organization{},
 		&Branch{},
 		&Inward{},
+		&Document{},
 		&Address{},
 		&Sender{},
 	)
 
-	ppdA := admin.New(&admin.AdminConfig{DB: dB})
-	ppdA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
+	fbA := admin.New(&admin.AdminConfig{DB: dB, SiteName: "FileBook"})
+	fbA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
 
-	loadMasters(ppdA)
-	loadRes("User", ppdA)
-	loadRes("Inward", ppdA)
+	loadMasters(fbA)
+	loadRes("User", fbA)
+	loadRes("Inward", fbA)
 
 	mux := http.NewServeMux()
-	ppdA.MountTo("/admin", mux)
+	fbA.MountTo("/admin", mux)
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
@@ -167,7 +168,7 @@ func initLog() {
 	log.SetFlags(log.Ldate | log.Lmicroseconds | log.Lshortfile)
 }
 
-func loadMasters(ppdA *admin.Admin) {
+func loadMasters(fbA *admin.Admin) {
 	confFMgt := admin.Config{
 		Menu: []string{
 			"File Management",
@@ -180,18 +181,18 @@ func loadMasters(ppdA *admin.Admin) {
 		},
 	}
 
-	ppdA.AddResource(&Inward{}, &confFMgt)
-	ppdA.AddResource(&User{}, &confAdmn)
-	ppdA.AddResource(&Seat{}, &confAdmn)
-	ppdA.AddResource(&Department{}, &confAdmn)
-	ppdA.AddResource(&Organization{}, &confAdmn)
-	ppdA.AddResource(&Branch{}, &confAdmn)
+	fbA.AddResource(&Inward{}, &confFMgt)
+	fbA.AddResource(&User{}, &confAdmn)
+	fbA.AddResource(&Seat{}, &confAdmn)
+	fbA.AddResource(&Department{}, &confAdmn)
+	fbA.AddResource(&Organization{}, &confAdmn)
+	fbA.AddResource(&Branch{}, &confAdmn)
 }
 
-func loadRes(nR string, ppdA *admin.Admin) {
+func loadRes(nR string, fbA *admin.Admin) {
 	switch nR {
 	case "User":
-		user := ppdA.GetResource(nR)
+		user := fbA.GetResource(nR)
 		genderTypes := []string{
 			"Male",
 			"Female",
@@ -226,14 +227,124 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			Type: "date",
 		})
 
-		// Filter users by gender
-		user.Filter(&admin.Filter{
-			Name:   "Gender",
-			Config: configGenderTypes,
+		user.Meta(&admin.Meta{
+			Name:      "Seat",
+			FieldName: "seat",
+			Type:      "string",
+			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).SeatID) },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newValue := utils.ToString(metaValue.Value); newValue != "" {
+					record.(*User).SeatID = getID(newValue)
+				}
+			},
 		})
 
+		user.Meta(&admin.Meta{
+			Name:      "Dept.",
+			FieldName: "department",
+			Type:      "string",
+			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newValue := utils.ToString(metaValue.Value); newValue != "" {
+					record.(*User).DepartmentID = getID(newValue)
+				}
+			},
+		})
+
+		user.Meta(&admin.Meta{
+			Name:      "Org.",
+			FieldName: "organization",
+			Type:      "string",
+			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newValue := utils.ToString(metaValue.Value); newValue != "" {
+					record.(*User).OrganizationID = getID(newValue)
+				}
+			},
+		})
+
+		user.Meta(&admin.Meta{
+			Name:      "Department",
+			FieldName: "department",
+			Type:      "string",
+			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newValue := utils.ToString(metaValue.Value); newValue != "" {
+					record.(*User).DepartmentID = getID(newValue)
+				}
+			},
+		})
+
+		user.Meta(&admin.Meta{
+			Name:      "Organization",
+			FieldName: "organization",
+			Type:      "string",
+			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
+			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+				if newValue := utils.ToString(metaValue.Value); newValue != "" {
+					record.(*User).OrganizationID = getID(newValue)
+				}
+			},
+		})
+
+		rowsUserDetailsNE := [][]string{
+			{"Name", "Phone"},
+			{"Email", "Password"},
+			{"Dob", "Gender"},
+			{"Addresses"},
+			{"Seat"},
+			{"Department"},
+			{"Organization"},
+		}
+
+		rowsUserDetailsI := [][]string{
+			{"Name"},
+			{"Email", "Phone"},
+			{"Dob", "Gender"},
+			{"Addresses"},
+			{"Seat"},
+			{"Dept."},
+			{"Org."},
+		}
+
+		sectionUserDetailsNE := &admin.Section{
+			Rows: rowsUserDetailsNE,
+		}
+
+		sectionUserDetailsI := &admin.Section{
+			Rows: rowsUserDetailsI,
+		}
+
+		user.NewAttrs(
+			sectionUserDetailsNE,
+		)
+
+		user.EditAttrs(
+			sectionUserDetailsNE,
+		)
+
+		user.IndexAttrs(
+			sectionUserDetailsI,
+		)
+		user.SearchAttrs(
+			"ID",
+			"Name",
+			"Email",
+			"Phone",
+			"Addresses.Address",
+			"Addresses.Pincode",
+		)
+		/*
+			for _, gT := range genderTypes {
+				user.Scope(&admin.Scope{
+					Name:    gT,
+					Group:   "Gender",
+					Handler: handlerScope("Gender", gT),
+				})
+			}
+		*/
 	case "Inward":
-		inward := ppdA.GetResource(nR)
+		inward := fbA.GetResource(nR)
 
 		typesInward := []string{
 			"Letter",
@@ -315,6 +426,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"Title",
 			"Sender",
 			sectionInwardDetails,
+			"Status",
 			"Files",
 		)
 
@@ -322,13 +434,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			"ID",
 			"Title",
 			"Sender.Name",
-			"Status",
 		)
-
-		oldSearchHandler := inward.SearchHandler
-		inward.SearchHandler = func(keyword string, context *qor.Context) *gorm.DB {
-			return oldSearchHandler(keyword, context)
-		}
 
 		metaSender := inward.Meta(&admin.Meta{
 			Name: "Sender",
@@ -392,6 +498,7 @@ func loadRes(nR string, ppdA *admin.Admin) {
 			}
 		}
 
+		inward.Config.IconName = "IconInward"
 	}
 }
 
@@ -419,4 +526,12 @@ func strToSHA256(str string) []byte {
 	strSHA.Write([]byte(str))
 	strSHAHexStr := hex.EncodeToString(strSHA.Sum(nil))
 	return []byte(strSHAHexStr)
+}
+
+func getID(name string) uint {
+	return 0
+}
+
+func getName(id uint) string {
+	return "Nil"
 }
