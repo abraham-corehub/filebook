@@ -192,7 +192,7 @@ func loadMasters(fbA *admin.Admin) {
 func loadRes(nR string, fbA *admin.Admin) {
 	switch nR {
 	case "User":
-		user := fbA.GetResource(nR)
+		userRes := fbA.GetResource(nR)
 		genderTypes := []string{
 			"Male",
 			"Female",
@@ -204,8 +204,8 @@ func loadRes(nR string, fbA *admin.Admin) {
 			Collection: genderTypes,
 		}
 
-		user.IndexAttrs("-Password")
-		user.Meta(&admin.Meta{
+		userRes.IndexAttrs("-Password")
+		userRes.Meta(&admin.Meta{
 			Name:      "Password",
 			FieldName: "password",
 			Type:      "password",
@@ -217,75 +217,125 @@ func loadRes(nR string, fbA *admin.Admin) {
 				}
 			},
 		})
-		user.Meta(&admin.Meta{
+		userRes.Meta(&admin.Meta{
 			Name:   "Gender",
 			Config: configGenderTypes,
 		})
 
-		user.Meta(&admin.Meta{
+		userRes.Meta(&admin.Meta{
 			Name: "Dob",
 			Type: "date",
 		})
 
-		user.Meta(&admin.Meta{
-			Name:      "Seat",
-			FieldName: "seat",
-			Type:      "string",
-			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).SeatID) },
-			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-				if newValue := utils.ToString(metaValue.Value); newValue != "" {
-					record.(*User).SeatID = getID(newValue)
-				}
-			},
-		})
+		attrsUser := [][]string{
+			{"Seat", "seat"},
+			{"Dept.", "department"},
+			{"Org.", "organization"},
+			{"Department", "department"},
+			{"Organization", "organization"},
+		}
 
-		user.Meta(&admin.Meta{
-			Name:      "Dept.",
-			FieldName: "department",
-			Type:      "string",
-			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
-			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-				if newValue := utils.ToString(metaValue.Value); newValue != "" {
-					record.(*User).DepartmentID = getID(newValue)
+		for _, aU := range attrsUser {
+			valuer := func(interface{}, *qor.Context) interface{} { return "" }
+			setter := func(interface{}, *resource.MetaValue, *qor.Context) {}
+			switch aU[1] {
+			case "seat":
+				valuer = func(r interface{}, c *qor.Context) interface{} {
+					return getName(fbA, aU[1], r.(*User).SeatID)
 				}
-			},
-		})
+				setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+					if newValue := utils.ToString(mV.Value); newValue != "" {
+						r.(*User).SeatID = getID(fbA, aU[1], newValue)
+					}
+				}
+			case "department":
+				valuer = func(r interface{}, c *qor.Context) interface{} {
+					return getName(fbA, aU[1], r.(*User).DepartmentID)
+				}
+				setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+					if newValue := utils.ToString(mV.Value); newValue != "" {
+						r.(*User).DepartmentID = getID(fbA, aU[1], newValue)
+					}
+				}
+			case "organization":
+				valuer = func(r interface{}, c *qor.Context) interface{} {
+					return getName(fbA, aU[1], r.(*User).OrganizationID)
+				}
+				setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+					if newValue := utils.ToString(mV.Value); newValue != "" {
+						r.(*User).OrganizationID = getID(fbA, aU[1], newValue)
+					}
+				}
+			}
+			userRes.Meta(&admin.Meta{
+				Name:      aU[0],
+				FieldName: aU[1],
+				Type:      "string",
+				Valuer:    valuer,
+				Setter:    setter,
+			})
+		}
+		/*
+			user.Meta(&admin.Meta{
+				Name:      "Seat",
+				FieldName: "seat",
+				Type:      "string",
+				Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).SeatID) },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if newValue := utils.ToString(metaValue.Value); newValue != "" {
+						record.(*User).SeatID = getID(newValue)
+					}
+				},
+			})
 
-		user.Meta(&admin.Meta{
-			Name:      "Org.",
-			FieldName: "organization",
-			Type:      "string",
-			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
-			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-				if newValue := utils.ToString(metaValue.Value); newValue != "" {
-					record.(*User).OrganizationID = getID(newValue)
-				}
-			},
-		})
+			user.Meta(&admin.Meta{
+				Name:      "Dept.",
+				FieldName: "department",
+				Type:      "string",
+				Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if newValue := utils.ToString(metaValue.Value); newValue != "" {
+						record.(*User).DepartmentID = getID(newValue)
+					}
+				},
+			})
 
-		user.Meta(&admin.Meta{
-			Name:      "Department",
-			FieldName: "department",
-			Type:      "string",
-			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
-			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-				if newValue := utils.ToString(metaValue.Value); newValue != "" {
-					record.(*User).DepartmentID = getID(newValue)
-				}
-			},
-		})
+			user.Meta(&admin.Meta{
+				Name:      "Org.",
+				FieldName: "organization",
+				Type:      "string",
+				Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if newValue := utils.ToString(metaValue.Value); newValue != "" {
+						record.(*User).OrganizationID = getID(newValue)
+					}
+				},
+			})
 
-		user.Meta(&admin.Meta{
-			Name:      "Organization",
-			FieldName: "organization",
-			Type:      "string",
-			Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
-			Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
-				if newValue := utils.ToString(metaValue.Value); newValue != "" {
-					record.(*User).OrganizationID = getID(newValue)
-				}
-			},
-		})
+			user.Meta(&admin.Meta{
+				Name:      "Department",
+				FieldName: "department",
+				Type:      "string",
+				Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).DepartmentID) },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if newValue := utils.ToString(metaValue.Value); newValue != "" {
+						record.(*User).DepartmentID = getID(newValue)
+					}
+				},
+			})
+
+			user.Meta(&admin.Meta{
+				Name:      "Organization",
+				FieldName: "organization",
+				Type:      "string",
+				Valuer:    func(r interface{}, c *qor.Context) interface{} { return getName(r.(*User).OrganizationID) },
+				Setter: func(record interface{}, metaValue *resource.MetaValue, context *qor.Context) {
+					if newValue := utils.ToString(metaValue.Value); newValue != "" {
+						record.(*User).OrganizationID = getID(newValue)
+					}
+				},
+			})
+		*/
 
 		rowsUserDetailsNE := [][]string{
 			{"Name", "Phone"},
@@ -315,18 +365,18 @@ func loadRes(nR string, fbA *admin.Admin) {
 			Rows: rowsUserDetailsI,
 		}
 
-		user.NewAttrs(
+		userRes.NewAttrs(
 			sectionUserDetailsNE,
 		)
 
-		user.EditAttrs(
+		userRes.EditAttrs(
 			sectionUserDetailsNE,
 		)
 
-		user.IndexAttrs(
+		userRes.IndexAttrs(
 			sectionUserDetailsI,
 		)
-		user.SearchAttrs(
+		userRes.SearchAttrs(
 			"ID",
 			"Name",
 			"Email",
@@ -343,6 +393,7 @@ func loadRes(nR string, fbA *admin.Admin) {
 				})
 			}
 		*/
+
 	case "Inward":
 		inward := fbA.GetResource(nR)
 
@@ -528,10 +579,56 @@ func strToSHA256(str string) []byte {
 	return []byte(strSHAHexStr)
 }
 
-func getID(name string) uint {
-	return 0
+func getID(fbA *admin.Admin, typeRes string, name string) uint {
+	var id uint
+	switch typeRes {
+	case "user":
+		res := User{}
+		fbA.DB.Where("name = ?", name).First(&res)
+		id = res.ID
+	case "seat":
+		res := Seat{}
+		fbA.DB.Where("name = ?", name).First(&res)
+		id = res.ID
+	case "department":
+		res := Department{}
+		fbA.DB.Where("name = ?", name).First(&res)
+		id = res.ID
+	case "branch":
+		res := Branch{}
+		fbA.DB.Where("name = ?", name).First(&res)
+		id = res.ID
+	case "organization":
+		res := Organization{}
+		fbA.DB.Where("name = ?", name).First(&res)
+		id = res.ID
+	}
+	return id
 }
 
-func getName(id uint) string {
-	return "Nil"
+func getName(fbA *admin.Admin, typeRes string, id uint) string {
+	var name string
+	switch typeRes {
+	case "user":
+		res := User{}
+		fbA.DB.Where("id = ?", id).First(&res)
+		name = res.Name
+	case "seat":
+		res := Seat{}
+		fbA.DB.Where("id = ?", id).First(&res)
+		name = res.Name
+	case "department":
+		res := Department{}
+		fbA.DB.Where("id = ?", id).First(&res)
+		name = res.Name
+	case "branch":
+		res := Branch{}
+		fbA.DB.Where("id = ?", id).First(&res)
+		name = res.Name
+	case "organization":
+		res := Organization{}
+		fbA.DB.Where("id = ?", id).First(&res)
+		name = res.Name
+	}
+	return name
 }
