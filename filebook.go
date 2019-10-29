@@ -250,12 +250,12 @@ func loadResUser() {
 		case "seat":
 			seat := Seat{}
 			valuer = func(r interface{}, c *qor.Context) interface{} {
-				fbA.DB.Where("id = ?", r.(*User).SeatID).First(&seat)
+				c.DB.Where("id = ?", r.(*User).SeatID).First(&seat)
 				return seat.Name
 			}
 			setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
 				if newValue := utils.ToString(mV.Value); newValue != "" {
-					fbA.DB.Where("name = ?", newValue).First(&seat)
+					c.DB.Where("name = ?", newValue).First(&seat)
 					r.(*User).SeatID = seat.ID
 				}
 			}
@@ -263,12 +263,12 @@ func loadResUser() {
 		case "department":
 			dept := Department{}
 			valuer = func(r interface{}, c *qor.Context) interface{} {
-				fbA.DB.Where("id = ?", r.(*User).DepartmentID).First(&dept)
+				c.DB.Where("id = ?", r.(*User).DepartmentID).First(&dept)
 				return dept.Name
 			}
 			setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
 				if newValue := utils.ToString(mV.Value); newValue != "" {
-					fbA.DB.Where("name = ?", newValue).First(&dept)
+					c.DB.Where("name = ?", newValue).First(&dept)
 					r.(*User).DepartmentID = dept.ID
 				}
 			}
@@ -276,12 +276,12 @@ func loadResUser() {
 		case "organization":
 			org := Organization{}
 			valuer = func(r interface{}, c *qor.Context) interface{} {
-				fbA.DB.Where("id = ?", r.(*User).OrganizationID).First(&org)
+				c.DB.Where("id = ?", r.(*User).OrganizationID).First(&org)
 				return org.Name
 			}
 			setter = func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
 				if newValue := utils.ToString(mV.Value); newValue != "" {
-					fbA.DB.Where("name = ?", newValue).First(&org)
+					c.DB.Where("name = ?", newValue).First(&org)
 					r.(*User).OrganizationID = org.ID
 				}
 			}
@@ -525,7 +525,42 @@ func handlerScope(n string, f string) func(*gorm.DB, *qor.Context) *gorm.DB {
 }
 
 func loadResSeat() {
-	//resSeat := fbA.GetResource("Seat")
+	resSeat := fbA.GetResource("Seat")
+
+	a := [][]string{
+		{"Name", "name"},
+		{"User", "user"},
+		{"D.User", "duser"},
+		{"Dept.", "dept"},
+		{"Org.", "org"},
+		{"Branch", "branch"},
+	}
+	attrSeat := make([]string, 0)
+	for _, row := range a {
+		attrSeat = append(attrSeat, row[0])
+	}
+
+	resSeat.IndexAttrs(attrSeat)
+	resSeat.NewAttrs(attrSeat)
+	resSeat.EditAttrs(attrSeat)
+
+	resSeat.Meta(&admin.Meta{
+		Name:      "User",
+		FieldName: "user",
+		Type:      "string",
+		Valuer: func(r interface{}, c *qor.Context) interface{} {
+			user := &User{}
+			c.DB.Where("id = ?", r.(*Seat).UserID).First(&user)
+			return user.Name
+		},
+		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+			user := &User{}
+			if v := utils.ToString(mV.Value); v != "" {
+				c.DB.Where("name = ?", v).First(&user)
+				r.(*Seat).UserID = user.ID
+			}
+		},
+	})
 
 }
 
