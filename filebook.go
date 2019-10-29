@@ -129,7 +129,7 @@ type FileType struct {
 
 func main() {
 	initLog()
-	dB, _ := gorm.Open("sqlite3", "dbp.db")
+	dB, _ := gorm.Open("sqlite3", "dbfb.db")
 	media.RegisterCallbacks(dB)
 	dB.LogMode(true)
 
@@ -145,7 +145,7 @@ func main() {
 		&Sender{},
 	)
 
-	fbA := admin.New(&admin.AdminConfig{DB: dB, SiteName: "FileBook"})
+	fbA := admin.New(&admin.AdminConfig{DB: dB, SiteName: "File Book"})
 	fbA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
 
 	loadMasters(fbA)
@@ -158,7 +158,7 @@ func main() {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
 	}
 
-	log.Println("ZOD Started!")
+	log.Println("FileBook Started!")
 	log.Println("Listening on: http://localhost:8080")
 	http.ListenAndServe(":8080", mux)
 }

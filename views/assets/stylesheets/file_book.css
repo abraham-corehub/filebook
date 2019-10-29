@@ -1,0 +1,32 @@
+
+[qor-icon-name="File Management"] > a::before {
+ content: "collections";
+}
+
+[qor-icon-name="Administration"] > a::before {
+ content: "business";
+}
+
+[qor-icon-name="Inwards"] > a::before {
+ content: "library_books";
+}
+
+[qor-icon-name="Users"] > a::before {
+ content: "supervisor_account";
+}
+
+[qor-icon-name="Seats"] > a::before {
+ content: "event_seat";
+}
+
+[qor-icon-name="Departments"] > a::before {
+ content: "view_module";
+}
+
+[qor-icon-name="Branches"] > a::before {
+ content: "view_week";
+}
+
+[qor-icon-name="Organizations"] > a::before {
+ content: "view_agenda";
+}

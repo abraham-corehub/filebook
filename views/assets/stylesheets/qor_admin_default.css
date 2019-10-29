@@ -13816,10 +13816,6 @@ table {
 	content: "\e897"
 }
 
-[qor-icon-name] [qor-icon-name]>a::before {
-	content: " "!important
-}
-
 .qor-alert {
 	padding: 24px 48px 0 24px;
 	line-height: 24px;
