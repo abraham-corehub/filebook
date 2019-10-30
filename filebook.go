@@ -502,43 +502,83 @@ func loadResSeat() {
 
 	attrsSeat := []string{
 		"Name",
-		"User",
-		"Delegated User",
+		//"User",
+		//"Delegated User",
 		"Department",
 		"Branch",
 		"Organization",
 	}
 
-	resSeat.IndexAttrs(attrsSeat)
-	resSeat.NewAttrs(attrsSeat[0], attrsSeat[3:])
-	resSeat.EditAttrs(attrsSeat[0], attrsSeat[3:])
-
-	resSeat.Meta(&admin.Meta{
-		Name:      "User",
-		FieldName: "User",
-		Type:      "string",
-		Valuer: func(r interface{}, c *qor.Context) interface{} {
-			m := &User{}
-			c.DB.Where("id = ?", r.(*Seat).UserID).First(&m)
-			return m.Name
+	sectionSeatDetails := &admin.Section{
+		Rows: [][]string{
+			attrsSeat[1:],
 		},
-	})
+	}
 
-	resSeat.Meta(&admin.Meta{
-		Name:      "Delegated User",
-		FieldName: "Delegated User",
-		Type:      "string",
-		Valuer: func(r interface{}, c *qor.Context) interface{} {
-			user := &User{}
-			c.DB.Where("id = ?", r.(*Seat).DelegatedUserID).First(&user)
-			return user.Name
-		},
-	})
+	resSeat.IndexAttrs(
+		attrsSeat[0],
+		sectionSeatDetails,
+	)
+	resSeat.NewAttrs(
+		attrsSeat[0],
+		sectionSeatDetails,
+	)
+	resSeat.EditAttrs(
+		attrsSeat[0],
+		sectionSeatDetails,
+	)
+	/*
+		resSeat.Meta(&admin.Meta{
+			Name:      "User",
+			FieldName: "User",
+			Type:      "string",
+			Valuer: func(r interface{}, c *qor.Context) interface{} {
+				m := &User{}
+				c.DB.Where("id = ?", r.(*Seat).UserID).First(&m)
+				return m.Name
+			},
+		})
+
+		resSeat.Meta(&admin.Meta{
+			Name:      "Delegated User",
+			FieldName: "Delegated User",
+			Type:      "string",
+			Valuer: func(r interface{}, c *qor.Context) interface{} {
+				user := &User{}
+				c.DB.Where("id = ?", r.(*Seat).DelegatedUserID).First(&user)
+				return user.Name
+			},
+		})
+	*/
+
+	depts := []Department{}
+	fbA.DB.Find(&depts)
+	nD := make([]string, 0)
+	for _, dept := range depts {
+		nD = append(nD, dept.Name)
+	}
+
+	branches := []Branch{}
+	fbA.DB.Find(&branches)
+	nB := make([]string, 0)
+	for _, branches := range branches {
+		nB = append(nB, branches.Name)
+	}
+
+	orgs := []Organization{}
+	fbA.DB.Find(&orgs)
+	nO := make([]string, 0)
+	for _, org := range orgs {
+		nO = append(nO, org.Name)
+	}
 
 	resSeat.Meta(&admin.Meta{
 		Name:      "Department",
 		FieldName: "Department",
 		Type:      "string",
+		Config: &admin.SelectOneConfig{
+			Collection: nD,
+		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			dept := &Department{}
 			c.DB.Where("id = ?", r.(*Seat).DepartmentID).First(&dept)
@@ -557,6 +597,9 @@ func loadResSeat() {
 		Name:      "Branch",
 		FieldName: "Branch",
 		Type:      "string",
+		Config: &admin.SelectOneConfig{
+			Collection: nB,
+		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			branch := &Branch{}
 			c.DB.Where("id = ?", r.(*Seat).BranchID).First(&branch)
@@ -575,6 +618,9 @@ func loadResSeat() {
 		Name:      "Organization",
 		FieldName: "Organization",
 		Type:      "string",
+		Config: &admin.SelectOneConfig{
+			Collection: nO,
+		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			org := &Organization{}
 			c.DB.Where("id = ?", r.(*Seat).OrganizationID).First(&org)
