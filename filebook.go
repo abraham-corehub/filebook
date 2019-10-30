@@ -497,6 +497,7 @@ func loadResInward() {
 		}
 	}
 }
+
 func loadResSeat() {
 	resSeat := fbA.GetResource("Seat")
 
@@ -527,29 +528,15 @@ func loadResSeat() {
 		attrsSeat[0],
 		sectionSeatDetails,
 	)
-	/*
-		resSeat.Meta(&admin.Meta{
-			Name:      "User",
-			FieldName: "User",
-			Type:      "string",
-			Valuer: func(r interface{}, c *qor.Context) interface{} {
-				m := &User{}
-				c.DB.Where("id = ?", r.(*Seat).UserID).First(&m)
-				return m.Name
-			},
-		})
 
-		resSeat.Meta(&admin.Meta{
-			Name:      "Delegated User",
-			FieldName: "Delegated User",
-			Type:      "string",
-			Valuer: func(r interface{}, c *qor.Context) interface{} {
-				user := &User{}
-				c.DB.Where("id = ?", r.(*Seat).DelegatedUserID).First(&user)
-				return user.Name
-			},
-		})
-	*/
+	resSeat.SearchAttrs(
+		attrsSeat...,
+	)
+
+	oldSearchHandler := resSeat.SearchHandler
+	resSeat.SearchHandler = func(keyword string, context *qor.Context) *gorm.DB {
+		return oldSearchHandler(keyword, context)
+	}
 
 	depts := []Department{}
 	fbA.DB.Find(&depts)
@@ -572,10 +559,22 @@ func loadResSeat() {
 		nO = append(nO, org.Name)
 	}
 
+	//resDept := fbA.GetResource("Department")
 	resSeat.Meta(&admin.Meta{
 		Name:      "Department",
 		FieldName: "Department",
 		Type:      "string",
+		/*
+			Config: &admin.SelectOneConfig{
+				SelectMode:         "select_async",
+				RemoteDataResource: resDept,
+			},
+			Valuer: func(r interface{}, c *qor.Context) interface{} {
+				dept := &Department{}
+				c.DB.Where("id = ?", r.(*Seat).DepartmentID).First(&dept)
+				return dept.Name
+			},
+		*/
 		Config: &admin.SelectOneConfig{
 			Collection: nD,
 		},
@@ -592,7 +591,6 @@ func loadResSeat() {
 			}
 		},
 	})
-
 	resSeat.Meta(&admin.Meta{
 		Name:      "Branch",
 		FieldName: "Branch",
