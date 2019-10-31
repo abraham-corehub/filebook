@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -160,6 +161,13 @@ func main() {
 	loadResOrg()
 
 	mux := http.NewServeMux()
+
+	router := fbA.GetRouter()
+
+	router.Post("/admin/ajax", func(c *admin.Context) {
+		handlerAjax(c)
+	})
+
 	fbA.MountTo("/admin", mux)
 	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
 		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
@@ -672,6 +680,24 @@ func loadResBranch() {
 
 func loadResOrg() {
 
+}
+
+func handlerAjax(c *admin.Context) {
+	// do somehing here
+	c.Request.ParseForm()
+	res := c.Request.Form.Get("res")
+	id := c.Request.Form.Get("id")
+	field := c.Request.Form.Get("field")
+	value := c.Request.Form.Get("value")
+	fmt.Println("Ajax Request!, data:", res, id, field, value)
+	type jsonResponse struct {
+		data string
+	}
+	p := jsonResponse{}
+	p.data = "hello"
+	w := c.Writer
+	w.Header().Set("Content-Type", "application/json")
+	fmt.Println(json.NewEncoder(w).Encode(p))
 }
 
 func strToSHA256(str string) []byte {
