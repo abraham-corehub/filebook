@@ -134,7 +134,7 @@ func main() {
 	initLog()
 	dB, _ := gorm.Open("sqlite3", "dbfb.db")
 	media.RegisterCallbacks(dB)
-	dB.LogMode(true)
+	//dB.LogMode(true)
 
 	dB.AutoMigrate(
 		&User{},
@@ -560,7 +560,7 @@ func loadResSeat() {
 	}
 
 	//resDept := fbA.GetResource("Department")
-	resSeat.Meta(&admin.Meta{
+	metaDept := admin.Meta{
 		Name:      "Department",
 		FieldName: "Department",
 		Type:      "string",
@@ -568,11 +568,6 @@ func loadResSeat() {
 			Config: &admin.SelectOneConfig{
 				SelectMode:         "select_async",
 				RemoteDataResource: resDept,
-			},
-			Valuer: func(r interface{}, c *qor.Context) interface{} {
-				dept := &Department{}
-				c.DB.Where("id = ?", r.(*Seat).DepartmentID).First(&dept)
-				return dept.Name
 			},
 		*/
 		Config: &admin.SelectOneConfig{
@@ -590,8 +585,9 @@ func loadResSeat() {
 				r.(*Seat).DepartmentID = dept.ID
 			}
 		},
-	})
-	resSeat.Meta(&admin.Meta{
+	}
+
+	metaBranch := admin.Meta{
 		Name:      "Branch",
 		FieldName: "Branch",
 		Type:      "string",
@@ -610,9 +606,8 @@ func loadResSeat() {
 				r.(*Seat).BranchID = branch.ID
 			}
 		},
-	})
-
-	resSeat.Meta(&admin.Meta{
+	}
+	metaOrg := admin.Meta{
 		Name:      "Organization",
 		FieldName: "Organization",
 		Type:      "string",
@@ -631,7 +626,40 @@ func loadResSeat() {
 				r.(*Seat).OrganizationID = org.ID
 			}
 		},
+	}
+
+	resSeat.Meta(&metaDept)
+	resSeat.Meta(&metaBranch)
+	resSeat.Meta(&metaOrg)
+
+	metaP := &admin.MetaProcessor{
+		Name: "make-sure-label-is-select-gender",
+		Handler: func(meta *admin.Meta) {
+			fmt.Println("Inside Meta Processor")
+			meta.Label = "Department"
+		},
+	}
+	metaDept.AddProcessor(metaP)
+}
+
+func testAction() {
+	resSeat := fbA.GetResource("Seat")
+	trackingNumberRes := fbA.NewResource(&Branch{})
+
+	resSeat.Action(&admin.Action{
+		Name: "Ship",
+		Handler: func(argument *admin.ActionArgument) error {
+			// Get the user input from argument.
+			trackingNumberArgument := argument.Argument.(*Branch)
+			for _, record := range argument.FindSelectedRecords() {
+				argument.Context.GetDB().Model(record).UpdateColumn("Name", trackingNumberArgument.Name)
+			}
+			return nil
+		},
+		Resource: trackingNumberRes,
+		Modes:    []string{"show", "menu_item"},
 	})
+
 }
 
 func loadResDept() {
