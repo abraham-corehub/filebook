@@ -164,7 +164,7 @@ func main() {
 
 	router := fbA.GetRouter()
 
-	router.Post("/admin/ajax", func(c *admin.Context) {
+	router.Post("/ajax", func(c *admin.Context) {
 		handlerAjax(c)
 	})
 
@@ -639,15 +639,6 @@ func loadResSeat() {
 	resSeat.Meta(&metaDept)
 	resSeat.Meta(&metaBranch)
 	resSeat.Meta(&metaOrg)
-
-	metaP := &admin.MetaProcessor{
-		Name: "make-sure-label-is-select-gender",
-		Handler: func(meta *admin.Meta) {
-			fmt.Println("Inside Meta Processor")
-			meta.Label = "Department"
-		},
-	}
-	metaDept.AddProcessor(metaP)
 }
 
 func testAction() {
@@ -690,14 +681,15 @@ func handlerAjax(c *admin.Context) {
 	field := c.Request.Form.Get("field")
 	value := c.Request.Form.Get("value")
 	fmt.Println("Ajax Request!, data:", res, id, field, value)
-	type jsonResponse struct {
-		data string
+
+	type Data struct {
+		Name string
 	}
-	p := jsonResponse{}
-	p.data = "hello"
+	data := Data{}
+	data.Name = "Abraham"
 	w := c.Writer
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Println(json.NewEncoder(w).Encode(p))
+	json.NewEncoder(w).Encode(data)
 }
 
 func strToSHA256(str string) []byte {

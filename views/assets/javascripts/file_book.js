@@ -12,7 +12,7 @@ $(document).ready(function () {
    dataType: dataType
  });
  */
-  $.post("admin/ajax",
+  $.post("/admin/ajax",
    {
     res: d[0],
     id: d[1],
@@ -20,7 +20,7 @@ $(document).ready(function () {
     value: this.value
    },
    function (data, status) {
-    console.log("Data: " + data.data + "\nStatus: " + status);
+    console.log("Data: " + data.Name + "\nStatus: " + status);
    });
  });
  /*
