@@ -1,31 +1,37 @@
-//alert("Javascript for File Book Loaded!!!")
+//console.log("Javascript for File Book Loaded!!!")
 $(document).ready(function () {
- console.log("Javascript for File Book Loaded!!!")
- $(document).on("change", "select", function () {
-  console.log("Clicked!, Selection is :" + this.id);
-  d = this.id.split("_")
-  /*$.ajax({
-   type: "POST",
-   url: "admin/ajax",
-   data: data,
-   success: success,
-   dataType: dataType
- });
- */
-  $.post("/admin/ajax",
-   {
-    res: d[0],
-    id: d[1],
-    field: d[2],
-    value: this.value
-   },
-   function (data, status) {
-    console.log("Data: " + data.Name + "\nStatus: " + status);
-   });
- });
- /*
- $('select').on('change', function() {
-  alert( this.value );
- });
-*/
+ //fnInit();
 });
+
+function fnInit() {
+ console.log("Javascript for File Book Loaded!!!")
+ $(document).on("change", "select", fnOnChangeSelect);
+
+}
+
+function fnAjaxOnSuccess(data, status) {
+ console.log(this.target + ", Data: " + data.Name + "\nStatus: " + status)
+}
+
+function fnOnChangeSelect() {
+ console.log("Clicked!, Selection is :" + this.id);
+ d = this.id.split("_")
+
+ urlAjax = "/admin/departments?scopes=Finance";
+ dataAjax = {
+  res: d[0],
+  id: d[1],
+  field: d[2],
+  value: this.value
+ };
+
+ $.ajax({
+  type: "POST",
+  url: urlAjax,
+  data: dataAjax,
+  success: fnAjaxOnSuccess,
+  dataType: "json"
+ });
+
+ //$.post(urlAjax, dataAjax, fnAjaxOnSuccess(data, success));
+}

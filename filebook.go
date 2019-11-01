@@ -293,22 +293,20 @@ func loadResUser() {
 		{"Addresses"},
 	}
 
-	rowsUserDetailsI := [][]string{
-		{"Name"},
-		{"Email", "Phone"},
-		{"Dob", "Gender"},
-		{"Addresses"},
-		{"Seat"},
-		{"Dept."},
-		{"Org."},
+	attrsUserDetailsI := []string{
+		"Name",
+		"Email",
+		"Phone",
+		"Dob",
+		"Gender",
+		"Seat",
+		"Branch",
+		"Dept.",
+		"Org.",
 	}
 
 	sectionUserDetailsNE := &admin.Section{
 		Rows: rowsUserDetailsNE,
-	}
-
-	sectionUserDetailsI := &admin.Section{
-		Rows: rowsUserDetailsI,
 	}
 
 	userRes.NewAttrs(
@@ -320,7 +318,7 @@ func loadResUser() {
 	)
 
 	userRes.IndexAttrs(
-		sectionUserDetailsI,
+		attrsUserDetailsI,
 	)
 	userRes.SearchAttrs(
 		"ID",
@@ -567,20 +565,20 @@ func loadResSeat() {
 		nO = append(nO, org.Name)
 	}
 
-	//resDept := fbA.GetResource("Department")
+	resDept := fbA.GetResource("Department")
 	metaDept := admin.Meta{
 		Name:      "Department",
 		FieldName: "Department",
 		Type:      "string",
+		Config: &admin.SelectOneConfig{
+			SelectMode:         "select_async",
+			RemoteDataResource: resDept,
+		},
 		/*
 			Config: &admin.SelectOneConfig{
-				SelectMode:         "select_async",
-				RemoteDataResource: resDept,
+				Collection: nD,
 			},
 		*/
-		Config: &admin.SelectOneConfig{
-			Collection: nD,
-		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			dept := &Department{}
 			c.DB.Where("id = ?", r.(*Seat).DepartmentID).First(&dept)
@@ -589,18 +587,27 @@ func loadResSeat() {
 		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
 			dept := &Department{}
 			if v := utils.ToString(mV.Value); v != "" {
-				c.DB.Where("name = ?", v).First(&dept)
+				// v is "ID" when admin.SelectOneConfig is configured as RemoteDataSource
+				c.DB.Where("id = ?", v).First(&dept)
 				r.(*Seat).DepartmentID = dept.ID
 			}
 		},
 	}
 
+	resBranch := fbA.GetResource("Branch")
+
 	metaBranch := admin.Meta{
 		Name:      "Branch",
 		FieldName: "Branch",
 		Type:      "string",
+		/*
+			Config: &admin.SelectOneConfig{
+				Collection: nB,
+			},
+		*/
 		Config: &admin.SelectOneConfig{
-			Collection: nB,
+			SelectMode:         "select_async",
+			RemoteDataResource: resBranch,
 		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			branch := &Branch{}
@@ -610,7 +617,7 @@ func loadResSeat() {
 		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
 			branch := &Branch{}
 			if v := utils.ToString(mV.Value); v != "" {
-				c.DB.Where("name = ?", v).First(&branch)
+				c.DB.Where("id = ?", v).First(&branch)
 				r.(*Seat).BranchID = branch.ID
 			}
 		},
@@ -682,14 +689,14 @@ func handlerAjax(c *admin.Context) {
 	value := c.Request.Form.Get("value")
 	fmt.Println("Ajax Request!, data:", res, id, field, value)
 
-	type Data struct {
+	type Response struct {
 		Name string
 	}
-	data := Data{}
-	data.Name = "Abraham"
+	r := Response{}
+	r.Name = "Abraham"
 	w := c.Writer
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	json.NewEncoder(w).Encode(r)
 }
 
 func strToSHA256(str string) []byte {
