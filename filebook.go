@@ -379,7 +379,8 @@ func loadResInward() {
 	}
 
 	sectionSenderDetails := &admin.Section{
-		Rows: rowsMenuSenderDetails,
+		Title: "Sender Details",
+		Rows:  rowsMenuSenderDetails,
 	}
 
 	resInward.Meta(&admin.Meta{
@@ -412,14 +413,16 @@ func loadResInward() {
 
 	resInward.EditAttrs(
 		attrsInward[0:1],
+		sectionSenderDetails,
 		sectionInwardDetails,
 		attrsInward[3],
 	)
 
 	resInward.NewAttrs(
 		attrsInward[0:1],
+		sectionSenderDetails,
 		sectionInwardDetails,
-		attrsInward[2:3],
+		attrsInward[3],
 	)
 
 	resInward.SearchAttrs(
