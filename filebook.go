@@ -355,31 +355,15 @@ func loadResInward() {
 		"Rejected",
 	}
 
-	typesSender := []string{
-		"Individual",
-		"Department",
-		"Organization",
-	}
-
 	rowsMenuInwardDetails := [][]string{
 		{"Type", "Mode"},
 		{"Date"},
 		{"Remarks"},
 	}
 
-	rowsMenuSenderDetails := [][]string{
-		{"Type", "Name"},
-		{"Email", "Phone"},
-		{"Address"},
-	}
-
 	sectionInwardDetails := &admin.Section{
 		Title: "Inward Details",
 		Rows:  rowsMenuInwardDetails,
-	}
-
-	sectionSenderDetails := &admin.Section{
-		Rows: rowsMenuSenderDetails,
 	}
 
 	resInward.Meta(&admin.Meta{
@@ -411,15 +395,18 @@ func loadResInward() {
 	}
 
 	resInward.EditAttrs(
-		attrsInward[0:1],
+		attrsInward[0],
 		sectionInwardDetails,
+		attrsInward[1],
 		attrsInward[3],
 	)
 
 	resInward.NewAttrs(
-		attrsInward[0:1],
+		attrsInward[0],
 		sectionInwardDetails,
-		attrsInward[2:3],
+		attrsInward[1],
+		attrsInward[2],
+		attrsInward[3],
 	)
 
 	resInward.SearchAttrs(
@@ -432,24 +419,38 @@ func loadResInward() {
 		Name: "Sender",
 	})
 
-	sndrRes := metaSender.Resource
+	typesSender := []string{
+		"Individual",
+		"Department",
+		"Organization",
+	}
 
-	sndrRes.EditAttrs(
+	rowsSectionSenderDetails := [][]string{
+		{"Type", "Name"},
+		{"Email", "Phone"},
+		{"Address"},
+	}
+
+	resSender := metaSender.Resource
+	sectionSenderDetails := &admin.Section{
+		Rows: rowsSectionSenderDetails,
+	}
+	resSender.EditAttrs(
 		sectionSenderDetails,
 	)
 
-	sndrRes.NewAttrs(
+	resSender.NewAttrs(
 		sectionSenderDetails,
 	)
 
-	sndrRes.Meta(&admin.Meta{
+	resSender.Meta(&admin.Meta{
 		Name: "Type",
 		Config: &admin.SelectOneConfig{
 			Collection: typesSender,
 		},
 	})
 
-	sndrRes.Meta(&admin.Meta{
+	resSender.Meta(&admin.Meta{
 		Name:      "Address",
 		FieldName: "address",
 		Type:      "text",
