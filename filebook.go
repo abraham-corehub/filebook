@@ -39,12 +39,13 @@ type User struct {
 // Seat is gorm model
 type Seat struct {
 	gorm.Model
-	Name            string
-	UserID          uint
-	DelegatedUserID uint
-	DepartmentID    uint
-	BranchID        uint
-	OrganizationID  uint
+	DepartmentID uint
+	Name         string
+	Code         string
+	/*
+		UserID          uint
+		DelegatedUserID uint
+	*/
 }
 
 // Address Create a GORM-backend model
@@ -69,6 +70,7 @@ type Department struct {
 	Email   string
 	Phone   string
 	Address string
+	Seat    []Seat
 }
 
 // Inward Create another GORM-backend model
@@ -153,12 +155,12 @@ func main() {
 	fbA.AssetFS.PrependPath(filepath.Join(utils.AppRoot, "views"))
 
 	loadMasters()
-	loadResUser()
-	loadResInward()
-	loadResSeat()
+	//loadResUser()
+	//loadResInward()
+	//loadResSeat()
 	loadResDept()
-	loadResBranch()
-	loadResOrg()
+	//loadResBranch()
+	//loadResOrg()
 
 	mux := http.NewServeMux()
 
@@ -197,8 +199,9 @@ func loadMasters() {
 	}
 
 	fbA.AddResource(&Inward{}, &confFMgt)
+	fbA.AddResource(&Sender{}, &admin.Config{Invisible: true})
 	fbA.AddResource(&User{}, &confAdmn)
-	fbA.AddResource(&Seat{}, &confAdmn)
+	fbA.AddResource(&Seat{}, &admin.Config{Invisible: true})
 	fbA.AddResource(&Department{}, &confAdmn)
 	fbA.AddResource(&Organization{}, &confAdmn)
 	fbA.AddResource(&Branch{}, &confAdmn)
@@ -415,52 +418,65 @@ func loadResInward() {
 		"Sender.Name",
 	)
 
-	metaSender := resInward.Meta(&admin.Meta{
-		Name: "Sender",
-	})
+	/*
+		metaSender := resInward.Meta(&admin.Meta{
+			Name: "Sender",
+		})
 
-	typesSender := []string{
-		"Individual",
-		"Department",
-		"Organization",
-	}
+		typesSender := []string{
+			"Individual",
+			"Department",
+			"Organization",
+		}
 
-	rowsSectionSenderDetails := [][]string{
-		{"Type", "Name"},
-		{"Email", "Phone"},
-		{"Address"},
-	}
+		rowsSectionSenderDetails := [][]string{
+			{"Type", "Name"},
+			{"Email", "Phone"},
+			{"Address"},
+		}
 
-	resSender := metaSender.Resource
-	sectionSenderDetails := &admin.Section{
-		Rows: rowsSectionSenderDetails,
-	}
-	resSender.EditAttrs(
-		sectionSenderDetails,
-	)
+		resSender := metaSender.Resource
+		sectionSenderDetails := &admin.Section{
+			Rows: rowsSectionSenderDetails,
+		}
+		resSender.EditAttrs(
+			sectionSenderDetails,
+		)
 
-	resSender.NewAttrs(
-		sectionSenderDetails,
-	)
+		resSender.NewAttrs(
+			sectionSenderDetails,
+		)
 
-	resSender.Meta(&admin.Meta{
-		Name: "Type",
+		resSender.Meta(&admin.Meta{
+			Name: "Type",
+			Config: &admin.SelectOneConfig{
+				Collection: typesSender,
+			},
+		})
+
+		resSender.Meta(&admin.Meta{
+			Name:      "Address",
+			FieldName: "address",
+			Type:      "text",
+			Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+				if nV := utils.ToString(mV.Value); nV != "" {
+					r.(*Sender).Address = string(nV)
+				}
+			},
+		})
+	*/
+
+	resSender := fbA.GetResource("Sender")
+
+	resInward.Meta(&admin.Meta{
+		Name:      "Sender",
+		FieldName: "sender",
+		Type:      "string",
 		Config: &admin.SelectOneConfig{
-			Collection: typesSender,
+			SelectMode:         "bottom_sheet",
+			RemoteDataResource: resSender,
 		},
 	})
-
-	resSender.Meta(&admin.Meta{
-		Name:      "Address",
-		FieldName: "address",
-		Type:      "text",
-		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
-			if nV := utils.ToString(mV.Value); nV != "" {
-				r.(*Sender).Address = string(nV)
-			}
-		},
-	})
-
 	resInward.Meta(&admin.Meta{
 		Name:      "Remarks",
 		FieldName: "remarks",
@@ -512,9 +528,9 @@ func loadResSeat() {
 		"Name",
 		//"User",
 		//"Delegated User",
-		"Department",
-		"Branch",
 		"Organization",
+		"Branch",
+		"Department",
 	}
 
 	sectionSeatDetails := &admin.Section{
@@ -545,11 +561,11 @@ func loadResSeat() {
 		return oldSearchHandler(keyword, context)
 	}
 
-	depts := []Department{}
-	fbA.DB.Find(&depts)
-	nD := make([]string, 0)
-	for _, dept := range depts {
-		nD = append(nD, dept.Name)
+	orgs := []Organization{}
+	fbA.DB.Find(&orgs)
+	nO := make([]string, 0)
+	for _, org := range orgs {
+		nO = append(nO, org.Name)
 	}
 
 	branches := []Branch{}
@@ -559,27 +575,73 @@ func loadResSeat() {
 		nB = append(nB, branches.Name)
 	}
 
-	orgs := []Organization{}
-	fbA.DB.Find(&orgs)
-	nO := make([]string, 0)
-	for _, org := range orgs {
-		nO = append(nO, org.Name)
+	depts := []Department{}
+	fbA.DB.Find(&depts)
+	nD := make([]string, 0)
+	for _, dept := range depts {
+		nD = append(nD, dept.Name)
 	}
+	/*
+		metaOrg := admin.Meta{
+			Name:      "Organization",
+			FieldName: "Organization",
+			Type:      "string",
+			Config: &admin.SelectOneConfig{
+				Collection: nO,
+			},
+			Valuer: func(r interface{}, c *qor.Context) interface{} {
+				org := &Organization{}
+				c.DB.Where("id = ?", r.(*Seat).OrganizationID).First(&org)
+				return org.Name
+			},
+			Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+				org := &Organization{}
+				if v := utils.ToString(mV.Value); v != "" {
+					c.DB.Where("name = ?", v).First(&org)
+					r.(*Seat).OrganizationID = org.ID
+				}
+			},
+		}
+	*/
 
-	resDept := fbA.GetResource("Department")
+	//resBranch := fbA.GetResource("Branch")
+	/*
+		metaBranch := admin.Meta{
+			Name:      "Branch",
+			FieldName: "Branch",
+			Type:      "string",
+			Config: &admin.SelectOneConfig{
+				Collection: nB,
+			},
+			Valuer: func(r interface{}, c *qor.Context) interface{} {
+				branch := &Branch{}
+				c.DB.Where("id = ?", r.(*Seat).BranchID).First(&branch)
+				return branch.Name
+			},
+			Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
+				branch := &Branch{}
+				if v := utils.ToString(mV.Value); v != "" {
+					c.DB.Where("name = ?", v).First(&branch)
+					r.(*Seat).BranchID = branch.ID
+				}
+			},
+		}
+	*/
+
+	//resDept := fbA.GetResource("Department")
 	metaDept := admin.Meta{
 		Name:      "Department",
 		FieldName: "Department",
 		Type:      "string",
-		Config: &admin.SelectOneConfig{
-			SelectMode:         "select_async",
-			RemoteDataResource: resDept,
-		},
 		/*
 			Config: &admin.SelectOneConfig{
-				Collection: nD,
+				SelectMode:         "select_async",
+				RemoteDataResource: resDept,
 			},
 		*/
+		Config: &admin.SelectOneConfig{
+			Collection: nD,
+		},
 		Valuer: func(r interface{}, c *qor.Context) interface{} {
 			dept := &Department{}
 			c.DB.Where("id = ?", r.(*Seat).DepartmentID).First(&dept)
@@ -589,87 +651,30 @@ func loadResSeat() {
 			dept := &Department{}
 			if v := utils.ToString(mV.Value); v != "" {
 				// v is "ID" when admin.SelectOneConfig is configured as RemoteDataSource
-				c.DB.Where("id = ?", v).First(&dept)
+				c.DB.Where("name = ?", v).First(&dept)
 				r.(*Seat).DepartmentID = dept.ID
 			}
 		},
 	}
 
-	resBranch := fbA.GetResource("Branch")
-
-	metaBranch := admin.Meta{
-		Name:      "Branch",
-		FieldName: "Branch",
-		Type:      "string",
-		/*
-			Config: &admin.SelectOneConfig{
-				Collection: nB,
-			},
-		*/
-		Config: &admin.SelectOneConfig{
-			SelectMode:         "select_async",
-			RemoteDataResource: resBranch,
-		},
-		Valuer: func(r interface{}, c *qor.Context) interface{} {
-			branch := &Branch{}
-			c.DB.Where("id = ?", r.(*Seat).BranchID).First(&branch)
-			return branch.Name
-		},
-		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
-			branch := &Branch{}
-			if v := utils.ToString(mV.Value); v != "" {
-				c.DB.Where("id = ?", v).First(&branch)
-				r.(*Seat).BranchID = branch.ID
-			}
-		},
-	}
-	metaOrg := admin.Meta{
-		Name:      "Organization",
-		FieldName: "Organization",
-		Type:      "string",
-		Config: &admin.SelectOneConfig{
-			Collection: nO,
-		},
-		Valuer: func(r interface{}, c *qor.Context) interface{} {
-			org := &Organization{}
-			c.DB.Where("id = ?", r.(*Seat).OrganizationID).First(&org)
-			return org.Name
-		},
-		Setter: func(r interface{}, mV *resource.MetaValue, c *qor.Context) {
-			org := &Organization{}
-			if v := utils.ToString(mV.Value); v != "" {
-				c.DB.Where("name = ?", v).First(&org)
-				r.(*Seat).OrganizationID = org.ID
-			}
-		},
-	}
-
+	//resSeat.Meta(&metaOrg)
 	resSeat.Meta(&metaDept)
-	resSeat.Meta(&metaBranch)
-	resSeat.Meta(&metaOrg)
-}
-
-func testAction() {
-	resSeat := fbA.GetResource("Seat")
-	trackingNumberRes := fbA.NewResource(&Branch{})
-
-	resSeat.Action(&admin.Action{
-		Name: "Ship",
-		Handler: func(argument *admin.ActionArgument) error {
-			// Get the user input from argument.
-			trackingNumberArgument := argument.Argument.(*Branch)
-			for _, record := range argument.FindSelectedRecords() {
-				argument.Context.GetDB().Model(record).UpdateColumn("Name", trackingNumberArgument.Name)
-			}
-			return nil
-		},
-		Resource: trackingNumberRes,
-		Modes:    []string{"show", "menu_item"},
-	})
-
+	//resSeat.Meta(&metaBranch)
 }
 
 func loadResDept() {
+	resDept := fbA.GetResource("Department")
+	resSeat := fbA.GetResource("Seat")
+
+	resDept.Meta(&admin.Meta{
+		Name:      "Seat",
+		FieldName: "seat",
+		Type:      "string",
+		Config: &admin.SelectOneConfig{
+			SelectMode:         "bottom_sheet",
+			RemoteDataResource: resSeat,
+		},
+	})
 
 }
 
