@@ -15,6 +15,7 @@ import (
 	"github.com/qor/admin"
 	"github.com/qor/media"
 	"github.com/qor/media/oss"
+	"github.com/qor/oss/filesystem"
 	"github.com/qor/qor"
 	"github.com/qor/qor/resource"
 	"github.com/qor/qor/utils"
@@ -126,10 +127,12 @@ type Document struct {
 
 var fbA *admin.Admin
 
+const dirData = "data"
+const nameFileDB = "dbfb.db"
+
 func main() {
 	initLog()
-	dB, _ := gorm.Open("sqlite3", "dbfb.db")
-	media.RegisterCallbacks(dB)
+	dB, _ := gorm.Open("sqlite3", dirData+"/"+nameFileDB)
 	//dB.LogMode(true)
 
 	dB.AutoMigrate(
@@ -164,9 +167,12 @@ func main() {
 	})
 
 	fbA.MountTo("/admin", mux)
-	for _, path := range []string{"system", "javascripts", "stylesheets", "images"} {
-		mux.Handle(fmt.Sprintf("/%s/", path), utils.FileServer(http.Dir("public")))
-	}
+
+	// Data Storage
+	media.RegisterCallbacks(dB)
+	mux.Handle("/data/", utils.FileServer(http.Dir(".")))
+	oss.URLTemplate = "/data/{{class}}/{{primary_key}}/{{column}}/{{filename_with_hash}}"
+	oss.Storage = filesystem.New(".")
 
 	log.Println("FileBook Started!")
 	log.Println("Listening on: http://localhost:8080")
