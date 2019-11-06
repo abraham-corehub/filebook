@@ -124,13 +124,6 @@ type Document struct {
 	Attachment oss.OSS
 }
 
-// FileType struct for File Types
-type FileType struct {
-	gorm.Model
-	InwardID uint
-	Name     string
-}
-
 var fbA *admin.Admin
 
 func main() {
